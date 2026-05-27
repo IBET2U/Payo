@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Payo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0b141a;
+      color: #e9edef;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #auth-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: #0b141a;
+    }
+
+    #auth-screen.hidden { display: none; }
+
+    .auth-brand {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .auth-brand .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #00a884;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 28px;
+      color: #fff;
+      margin: 0 auto 16px;
+    }
+
+    .auth-brand h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .auth-brand p {
+      font-size: 14px;
+      color: #8696a0;
+      max-width: 280px;
+    }
+
+    #clerk-auth {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #profile-screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
+    }
+
+    #profile-screen.visible { display: flex; }
+
+    .profile-card {
+      width: 100%;
+      max-width: 400px;
+      background: #1f2c34;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #2a3942;
+    }
+
+    .profile-card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .profile-card .subtitle {
+      font-size: 13px;
+      color: #8696a0;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: #8696a0;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: #2a3942;
+      border: 1px solid #2a3942;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e9edef;
+      font-size: 15px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #00a884;
+    }
+
+    .form-group input::placeholder { color: #667781; }
+
+    .form-hint {
+      font-size: 11px;
+      color: #667781;
+      margin-top: 4px;
+    }
+
+    .profile-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    #saveProfileBtn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #00a884;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    #saveProfileBtn:disabled {
+      background: #2a3942;
+      cursor: not-allowed;
+    }
+
+    #skipProfileBtn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #8696a0;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #skipProfileBtn:hover { color: #e9edef; }
+
+    #profileError {
+      color: #ea4335;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    #app-screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    #app-screen.visible {
+      display: flex;
+    }
+
+    header {
+      background: #1f2c34;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #2a3942;
+      flex-shrink: 0;
+    }
+
+    header .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #00a884;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    header .header-text { flex: 1; min-width: 0; }
+
+    header h1 {
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #8696a0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #signOutBtn {
+      background: transparent;
+      border: 1px solid #2a3942;
+      color: #8696a0;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    #signOutBtn:hover {
+      color: #e9edef;
+      border-color: #8696a0;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #0b141a url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111b21' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .bubble {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14.5px;
+      line-height: 1.45;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    .bubble .time {
+      font-size: 11px;
+      color: #8696a0;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .received {
+      align-self: flex-start;
+      background: #005c4b;
+      color: #e9edef;
+      border-top-left-radius: 0;
+    }
+
+    .sent {
+      align-self: flex-end;
+      background: #fff;
+      color: #111b21;
+      border-top-right-radius: 0;
+    }
+
+    .sent .time { color: #667781; }
+
+    .typing {
+      align-self: flex-start;
+      background: #005c4b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-top-left-radius: 0;
+      display: none;
+    }
+
+    .typing span {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: #8696a0;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-4px); }
+    }
+
+    footer {
+      background: #1f2c34;
+      padding: 8px 10px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    #messageInput {
+      flex: 1;
+      background: #2a3942;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e9edef;
+      font-size: 15px;
+      resize: none;
+      max-height: 120px;
+      line-height: 1.4;
+      font-family: inherit;
+    }
+
+    #messageInput::placeholder { color: #8696a0; }
+    #messageInput:focus { outline: none; }
+
+    #sendBtn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      background: #00a884;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #sendBtn:disabled {
+      background: #2a3942;
+      cursor: not-allowed;
+    }
+
+    #sendBtn svg { width: 20px; height: 20px; }
+
+    #auth-loading {
+      color: #8696a0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="auth-screen">
+    <div class="auth-brand">
+      <div class="avatar">P</div>
+      <h1>Payo</h1>
+      <p>Sign in to manage invoices and get paid — your AI payment agent for African freelancers.</p>
+    </div>
+    <p id="auth-loading">Loading...</p>
+    <div id="clerk-auth"></div>
+  </div>
+
+  <div id="profile-screen">
+    <div class="auth-brand">
+      <div class="avatar">P</div>
+      <h1>Payo</h1>
+      <p>One quick step before you start invoicing.</p>
+    </div>
+    <div class="profile-card">
+      <h2>Set up your profile</h2>
+      <p class="subtitle">Add where you want to receive USDC payments and your WhatsApp number for payment alerts.</p>
+      <p id="profileError"></p>
+      <form id="profileForm">
+        <div class="form-group">
+          <label for="walletAddress">USDC wallet address</label>
+          <input type="text" id="walletAddress" name="walletAddress" placeholder="0x... or your USDC address" autocomplete="off">
+          <p class="form-hint">Used for USD invoice payouts via crypto</p>
+        </div>
+        <div class="form-group">
+          <label for="phoneNumber">WhatsApp phone number</label>
+          <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+2348012345678" autocomplete="tel">
+          <p class="form-hint">Include country code for notifications</p>
+        </div>
+        <div class="profile-actions">
+          <button type="submit" id="saveProfileBtn">Save & continue</button>
+          <button type="button" id="skipProfileBtn">Skip for now</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="app-screen">
+    <header>
+      <div class="avatar" id="userAvatar">P</div>
+      <div class="header-text">
+        <h1>Payo</h1>
+        <p id="userEmail">Your payment agent</p>
+      </div>
+      <button type="button" id="signOutBtn">Sign out</button>
+    </header>
+
+    <div id="chat">
+      <div class="bubble received">
+        Hi! I'm Payo. Tell me who to invoice — client name, email, amount, due date, and what the work was for.
+        <div class="time" id="welcomeTime"></div>
+      </div>
+      <div class="typing" id="typing">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <footer>
+      <textarea id="messageInput" rows="1" placeholder="Message Payo..."></textarea>
+      <button id="sendBtn" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </footer>
+  </div>
+
+  <script>
+    const authScreen = document.getElementById('auth-screen');
+    const profileScreen = document.getElementById('profile-screen');
+    const appScreen = document.getElementById('app-screen');
+    const authLoading = document.getElementById('auth-loading');
+    const clerkAuthEl = document.getElementById('clerk-auth');
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typing = document.getElementById('typing');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const profileForm = document.getElementById('profileForm');
+    const profileError = document.getElementById('profileError');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const skipProfileBtn = document.getElementById('skipProfileBtn');
+
+    let messages = [];
+    let loading = false;
+    let clerkSignInMounted = false;
+    let clerkSignUpMounted = false;
+    let freelancer = null;
+    let userProfile = null;
+
+    function profileSetupStorageKey(userId) {
+      return `payoProfileComplete_${userId}`;
+    }
+
+    function isProfileSetupDone(userId) {
+      return localStorage.getItem(profileSetupStorageKey(userId)) === 'true';
+    }
+
+    function markProfileSetupDone(userId) {
+      localStorage.setItem(profileSetupStorageKey(userId), 'true');
+    }
+
+    document.getElementById('welcomeTime').textContent = formatTime(new Date());
+
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    signOutBtn.addEventListener('click', async () => {
+      if (window.Clerk) {
+        await window.Clerk.signOut();
+      }
+    });
+
+    profileForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveProfile();
+    });
+
+    skipProfileBtn.addEventListener('click', () => {
+      freelancer = getFreelancerFromClerk();
+      if (freelancer?.id) markProfileSetupDone(freelancer.id);
+      showChat();
+    });
+
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getFreelancerFromClerk() {
+      const user = window.Clerk?.user;
+      if (!user) return null;
+
+      const email =
+        user.primaryEmailAddress?.emailAddress ||
+        user.emailAddresses?.[0]?.emailAddress ||
+        '';
+
+      const name =
+        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+        user.fullName ||
+        user.username ||
+        email.split('@')[0] ||
+        'Freelancer';
+
+      return {
+        id: user.id,
+        email,
+        name,
+      };
+    }
+
+    async function getAuthHeaders() {
+      const token = await window.Clerk.session?.getToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return headers;
+    }
+
+    function hideAllScreens() {
+      authScreen.classList.add('hidden');
+      profileScreen.classList.remove('visible');
+      appScreen.classList.remove('visible');
+    }
+
+    function showAuth() {
+      hideAllScreens();
+      authScreen.classList.remove('hidden');
+      freelancer = null;
+      userProfile = null;
+      mountClerkAuth();
+    }
+
+    function showProfileSetup() {
+      freelancer = getFreelancerFromClerk();
+      if (!freelancer?.id || !freelancer?.email) {
+        showAuth();
+        return;
+      }
+
+      hideAllScreens();
+      profileScreen.classList.add('visible');
+      profileError.style.display = 'none';
+
+      if (userProfile?.wallet_address) {
+        document.getElementById('walletAddress').value = userProfile.wallet_address;
+      }
+      if (userProfile?.phone) {
+        document.getElementById('phoneNumber').value = userProfile.phone;
+      }
+    }
+
+    function showChat() {
+      freelancer = getFreelancerFromClerk();
+      if (!freelancer?.id || !freelancer?.email) {
+        showAuth();
+        return;
+      }
+
+      hideAllScreens();
+      appScreen.classList.add('visible');
+
+      const initial = (freelancer.name || freelancer.email)[0].toUpperCase();
+      document.getElementById('userAvatar').textContent = initial;
+      document.getElementById('userEmail').textContent = freelancer.email;
+    }
+
+    async function fetchProfile() {
+      const res = await fetch('/profile', {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+      });
+
+      if (res.status === 401) {
+        showAuth();
+        throw new Error('Session expired');
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Profile API returned invalid response');
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load profile');
+      userProfile = data.profile;
+      return data;
+    }
+
+    async function routeAfterLogin() {
+      freelancer = getFreelancerFromClerk();
+      if (!freelancer?.id || !freelancer?.email) {
+        showAuth();
+        return;
+      }
+
+      if (isProfileSetupDone(freelancer.id)) {
+        showChat();
+        return;
+      }
+
+      try {
+        const { has_wallet, profile } = await fetchProfile();
+
+        if (!profile?.email || !profile?.name) {
+          const bootstrapRes = await fetch('/profile', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+              email: freelancer.email,
+              name: freelancer.name,
+            }),
+          });
+          if (bootstrapRes.ok) {
+            const refreshed = await fetchProfile();
+            userProfile = refreshed.profile;
+            if (refreshed.has_wallet) {
+              markProfileSetupDone(freelancer.id);
+              showChat();
+              return;
+            }
+          }
+        }
+
+        if (has_wallet) {
+          markProfileSetupDone(freelancer.id);
+          showChat();
+        } else {
+          showProfileSetup();
+        }
+      } catch (err) {
+        console.error('Profile check failed, continuing to chat:', err);
+        showChat();
+      }
+    }
+
+    async function saveProfile() {
+      const wallet_address = document.getElementById('walletAddress').value.trim();
+      const phone = document.getElementById('phoneNumber').value.trim();
+
+      profileError.style.display = 'none';
+      saveProfileBtn.disabled = true;
+
+      try {
+        const res = await fetch('/profile', {
+          method: 'POST',
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({
+            wallet_address: wallet_address || null,
+            phone: phone || null,
+            email: freelancer.email,
+            name: freelancer.name,
+          }),
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Profile API returned invalid response');
+        }
+
+        const data = await res.json();
+        if (res.status === 401) {
+          showAuth();
+          return;
+        }
+        if (!res.ok) throw new Error(data.error || 'Failed to save profile');
+
+        userProfile = data.profile;
+        markProfileSetupDone(freelancer.id);
+        showChat();
+      } catch (err) {
+        console.error('Profile save failed, continuing to chat:', err);
+        markProfileSetupDone(freelancer.id);
+        showChat();
+      } finally {
+        saveProfileBtn.disabled = false;
+      }
+    }
+
+    function mountClerkAuth() {
+      if (!window.Clerk || clerkSignInMounted) return;
+
+      clerkAuthEl.innerHTML = `
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
+          <button type="button" id="showSignIn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#00a884;color:#fff;cursor:pointer;font-size:14px;">Sign in</button>
+          <button type="button" id="showSignUp" style="flex:1;padding:10px;border-radius:8px;border:1px solid #2a3942;background:#1f2c34;color:#e9edef;cursor:pointer;font-size:14px;">Sign up</button>
+        </div>
+        <div id="clerk-sign-in"></div>
+        <div id="clerk-sign-up" style="display:none;"></div>
+      `;
+
+      const signInHost = document.getElementById('clerk-sign-in');
+      const signUpHost = document.getElementById('clerk-sign-up');
+      const clerkAppearance = {
+        variables: {
+          colorBackground: '#1f2c34',
+          colorInputBackground: '#2a3942',
+          colorInputText: '#e9edef',
+          colorPrimary: '#00a884',
+          colorText: '#e9edef',
+          colorTextSecondary: '#8696a0',
+        },
+      };
+
+      if (clerkSignInMounted) window.Clerk.unmountSignIn(signInHost);
+      if (clerkSignUpMounted) window.Clerk.unmountSignUp(signUpHost);
+
+      window.Clerk.mountSignIn(signInHost, { appearance: clerkAppearance });
+      window.Clerk.mountSignUp(signUpHost, { appearance: clerkAppearance });
+      clerkSignInMounted = true;
+      clerkSignUpMounted = true;
+
+      document.getElementById('showSignIn').addEventListener('click', () => {
+        signInHost.style.display = 'block';
+        signUpHost.style.display = 'none';
+        document.getElementById('showSignIn').style.background = '#00a884';
+        document.getElementById('showSignIn').style.color = '#fff';
+        document.getElementById('showSignUp').style.background = '#1f2c34';
+        document.getElementById('showSignUp').style.color = '#e9edef';
+      });
+
+      document.getElementById('showSignUp').addEventListener('click', () => {
+        signInHost.style.display = 'none';
+        signUpHost.style.display = 'block';
+        document.getElementById('showSignUp').style.background = '#00a884';
+        document.getElementById('showSignUp').style.color = '#fff';
+        document.getElementById('showSignIn').style.background = '#1f2c34';
+        document.getElementById('showSignIn').style.color = '#e9edef';
+      });
+    }
+
+    function appendBubble(text, type) {
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${type}`;
+      bubble.innerHTML = `${escapeHtml(text)}<div class="time">${formatTime(new Date())}</div>`;
+      chat.insertBefore(bubble, typing);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML.replace(/\n/g, '<br>');
+    }
+
+    function setLoading(on) {
+      loading = on;
+      sendBtn.disabled = on;
+      typing.style.display = on ? 'block' : 'none';
+      if (on) chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text || loading || !freelancer) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      appendBubble(text, 'sent');
+
+      setLoading(true);
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({
+            message: text,
+            messages,
+            freelancer_id: freelancer.id,
+            freelancer_email: freelancer.email,
+            freelancer_name: freelancer.name,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.status === 401) {
+          showAuth();
+          throw new Error('Session expired. Please sign in again.');
+        }
+
+        if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
+        messages = data.messages || messages;
+        appendBubble(data.reply, 'received');
+      } catch (err) {
+        appendBubble(`Sorry, something went wrong: ${err.message}`, 'received');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function loadClerkScript(publishableKey) {
+      return new Promise((resolve, reject) => {
+        if (window.Clerk) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.setAttribute('data-clerk-publishable-key', publishableKey);
+        script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load Clerk'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function init() {
+      try {
+        const configRes = await fetch('/config');
+        const { clerkPublishableKey } = await configRes.json();
+
+        if (!clerkPublishableKey) {
+          authLoading.textContent = 'Clerk is not configured. Add CLERK_PUBLISHABLE_KEY to .env';
+          return;
+        }
+
+        await loadClerkScript(clerkPublishableKey);
+        await window.Clerk.load();
+
+        authLoading.style.display = 'none';
+
+        window.Clerk.addListener(({ user }) => {
+          if (user) {
+            routeAfterLogin();
+          } else {
+            showAuth();
+          }
+        });
+
+        if (window.Clerk.user) {
+          routeAfterLogin();
+        } else {
+          showAuth();
+        }
+      } catch (err) {
+        authLoading.textContent = `Failed to initialize: ${err.message}`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
