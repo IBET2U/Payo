@@ -120,6 +120,9 @@ async function initiateTransfer(senderId, recipientDetails, amount, reason, opti
 
   if (senderLock.error) throw senderLock.error;
   const sender = senderLock.data;
+  if (!sender) {
+    throw new Error('Sender profile not found');
+  }
 
   const senderBalance = Number(sender.wallet_balance || 0);
   if (!Number.isFinite(senderBalance) || senderBalance < amt) {

@@ -148,12 +148,43 @@ Respond with ONLY valid JSON, no markdown:
   });
 
   const text = message.content[0].text.trim();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Failed to parse chat intent');
+  console.log('[CLAUDE PARSE] raw response:', text);
+
+  const safeDefault = {
+    intent: 'general',
+    extracted: {},
+    reply: 'Sorry, e do small. Try again.',
+  };
+
+  const jsonMatches = text.match(/\{[\s\S]*\}/g);
+  if (!jsonMatches || jsonMatches.length === 0) {
+    console.error('[CLAUDE PARSE] No JSON object found in response');
+    return safeDefault;
   }
 
-  const parsed = JSON.parse(jsonMatch[0]);
+  const jsonStr = jsonMatches[jsonMatches.length - 1];
+
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (err) {
+    console.error('[CLAUDE PARSE] JSON.parse failed:', err.message, 'candidate:', jsonStr);
+    return safeDefault;
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return safeDefault;
+  }
+
+  if (!parsed.intent) {
+    parsed.intent = 'general';
+  }
+  if (!parsed.extracted || typeof parsed.extracted !== 'object') {
+    parsed.extracted = {};
+  }
+  if (!parsed.reply) {
+    parsed.reply = safeDefault.reply;
+  }
 
   if (parsed.extracted) {
     const inferred = inferCurrencyFromText(userMessage);

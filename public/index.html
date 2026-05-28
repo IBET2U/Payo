@@ -371,46 +371,58 @@
   <script>
     const TRANSLATIONS = {
       en: {
-        greeting: \"Good morning\",
-        sendMoney: \"Send Money\",
-        sendBill: \"Send Bill\",
-        collectMoney: \"Request Money\",
-        globalPayment: \"Get Paid Globally\",
-        balance: \"Your Payo Balance\",
-        pending: \"Pending\",
-        paid: \"Paid\",
-        billSent: \"Bill sent! I'll follow up automatically 💚\",
-        moneySent: \"Money sent successfully! 🎉\",
-        whoOwes: \"Who owes you money?\",
-        howMuch: \"How much?\",
-        whatDidYouDo: \"What did you do for them?\",
-        sendTo: \"Phone number or email\",
-        confirm: \"Confirm\",
-        cancel: \"Cancel\",
-        back: \"Back\",
-        loading: \"Loading...\",
-        error: \"Something went wrong\"
+        greeting: "Good morning",
+        sendMoney: "Send Money",
+        sendBill: "Send Bill",
+        collectMoney: "Request Money",
+        globalPayment: "Get Paid Globally",
+        balance: "Your Payo Balance",
+        pending: "Pending",
+        paid: "Paid",
+        billSent: "Bill sent! I'll follow up automatically 💚",
+        moneySent: "Money sent successfully! 🎉",
+        whoOwes: "Who owes you money?",
+        howMuch: "How much?",
+        whatDidYouDo: "What did you do for them?",
+        sendTo: "Phone number or email",
+        confirm: "Confirm",
+        cancel: "Cancel",
+        back: "Back",
+        loading: "Loading...",
+        error: "Something went wrong",
+        chatWelcome: "Hi! I'm Payo. Tell me who to invoice — client name, email/phone, amount, due date, and what the work was for.",
+        chatPlaceholder: "Message Payo...",
+        chatTitle: "Payo AI",
+        chatSend: "Send",
+        signOut: "Sign out",
+        settings: "Settings"
       },
       pid: {
-        greeting: \"How far\",
-        sendMoney: \"Send Owo\",
-        sendBill: \"Send Bill\",
-        collectMoney: \"Collect Money\",
-        globalPayment: \"International Payment\",
-        balance: \"Your Payo Money\",
-        pending: \"Still dey wait\",
-        paid: \"E don pay\",
-        billSent: \"Bill don go! I go dey chase dem if dem no pay 💚\",
-        moneySent: \"Omo! Money don go! 🎉\",
-        whoOwes: \"Who owe you money?\",
-        howMuch: \"How much dem owe you?\",
-        whatDidYouDo: \"Wetin you do for dem?\",
-        sendTo: \"Phone number or email\",
-        confirm: \"E correct\",
-        cancel: \"Comot\",
-        back: \"Go back\",
-        loading: \"E dey go...\",
-        error: \"Something do, try again\"
+        greeting: "How far",
+        sendMoney: "Send Owo",
+        sendBill: "Send Bill",
+        collectMoney: "Collect Money",
+        globalPayment: "International Payment",
+        balance: "Your Payo Money",
+        pending: "Still dey wait",
+        paid: "E don pay",
+        billSent: "Bill don go! I go dey chase dem if dem no pay 💚",
+        moneySent: "Omo! Money don go! 🎉",
+        whoOwes: "Who owe you money?",
+        howMuch: "How much dem owe you?",
+        whatDidYouDo: "Wetin you do for dem?",
+        sendTo: "Phone number or email",
+        confirm: "E correct",
+        cancel: "Comot",
+        back: "Go back",
+        loading: "E dey go...",
+        error: "Something do, try again",
+        chatWelcome: "How far! I be Payo. Tell me who you wan bill — person name, email/phone, how much, due date, and wetin you do for dem.",
+        chatPlaceholder: "Message Payo...",
+        chatTitle: "Payo AI",
+        chatSend: "Send",
+        signOut: "Log out",
+        settings: "Settings"
       }
     };
 
@@ -435,14 +447,47 @@
     let userProfile = null;
     let messages = [];
     let chatLoading = false;
+    let pendingRender = false;
 
     function getLang() { return localStorage.getItem('payoLang') || 'pid'; }
     function setLang(lang) { localStorage.setItem('payoLang', lang); }
 
+    function isUserTyping() {
+      const el = document.activeElement;
+      if (!el || !appEl.contains(el)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    }
+
+    function getCurrencySymbol(currency) {
+      return String(currency || 'NGN').toUpperCase() === 'USD' ? '$' : '₦';
+    }
+
+    function formatMoney(amount, currency = 'NGN') {
+      const num = Number(amount ?? 0);
+      const symbol = getCurrencySymbol(currency);
+      if (!Number.isFinite(num)) return `${symbol}0.00`;
+      const locale = symbol === '$' ? 'en-US' : 'en-NG';
+      return symbol + num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function formatMoneyNGN(n) {
-      const num = Number(n || 0);
-      if (!Number.isFinite(num)) return '₦0';
-      return '₦' + num.toLocaleString('en-NG', { maximumFractionDigits: 2 });
+      return formatMoney(n, 'NGN');
+    }
+
+    function parseAmount(value) {
+      const cleaned = String(value || '').replace(/[^\d.]/g, '');
+      return Number(cleaned);
+    }
+
+    function wireFormInputs(root) {
+      if (!root) return;
+      root.querySelectorAll('input, textarea, select').forEach((el) => {
+        el.addEventListener('click', (e) => e.stopPropagation());
+        el.addEventListener('keydown', (e) => e.stopPropagation());
+        el.addEventListener('input', (e) => e.stopPropagation());
+        el.addEventListener('focus', (e) => e.stopPropagation());
+      });
     }
 
     function timeAgo(iso) {
@@ -460,7 +505,7 @@
     function initials(nameOrEmail) {
       const s = String(nameOrEmail || '').trim();
       if (!s) return 'P';
-      const parts = s.split(/\\s+/).filter(Boolean);
+      const parts = s.split(/\s+/).filter(Boolean);
       if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
@@ -493,8 +538,8 @@
       if (res.status === 401) throw new Error('Unauthenticated');
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load profile');
-      userProfile = data.profile;
-      return data.profile;
+      userProfile = data.profile || null;
+      return userProfile;
     }
 
     async function fetchRecentActivity() {
@@ -520,6 +565,7 @@
           kind: 'invoice',
           name: inv.client_name || inv.client_email || inv.client_phone || 'Invoice',
           amount: Number(inv.amount || 0),
+          currency: inv.currency || 'NGN',
           status: inv.status || 'pending',
           created_at: inv.created_at || inv.updated_at || new Date().toISOString(),
         });
@@ -529,6 +575,7 @@
           kind: 'transfer',
           name: tr.recipient_phone_or_email || tr.recipient_id || 'Transfer',
           amount: Number(tr.amount || 0),
+          currency: 'NGN',
           status: 'transfer',
           created_at: tr.created_at || new Date().toISOString(),
         });
@@ -544,7 +591,13 @@
       });
     }
 
-    function render() {
+    function render(force) {
+      if (!force && isUserTyping()) {
+        pendingRender = true;
+        return;
+      }
+      pendingRender = false;
+
       const route = window.location.hash.replace('#', '') || 'home';
       if (route === 'home') return renderHome();
       if (route.startsWith('send')) return renderSendFlow(route);
@@ -557,15 +610,32 @@
       return renderHome();
     }
 
+    function safeRender(force) {
+      render(force);
+    }
+
     function navTo(route) {
       window.location.hash = route;
     }
 
-    langToggle.addEventListener('click', () => {
+    langToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
       const next = getLang() === 'pid' ? 'en' : 'pid';
       setLang(next);
       langToggle.textContent = next.toUpperCase();
-      render();
+      if (isUserTyping()) {
+        pendingRender = true;
+        return;
+      }
+      safeRender(true);
+    });
+
+    document.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (pendingRender && !isUserTyping()) {
+          safeRender(true);
+        }
+      }, 0);
     });
 
     aiFab.addEventListener('click', () => navTo('chat'));
@@ -577,7 +647,7 @@
       });
     });
 
-    window.addEventListener('hashchange', render);
+    window.addEventListener('hashchange', () => safeRender(true));
 
     function renderHome() {
       setActiveTab('home');
@@ -593,7 +663,7 @@
                 <div class="muted" style="font-size:12px">NGN</div>
               </div>
             </div>
-            <div class="balanceAmt" id="balAmt">₦0</div>
+            <div class="balanceAmt" id="balAmt">${formatMoneyNGN(userProfile?.wallet_balance ?? 0)}</div>
             <div class="balanceActions">
               <button type="button" class="miniBtn" id="topUpBtn">Top Up</button>
               <button type="button" class="miniBtn" id="withdrawBtn">Withdraw</button>
@@ -630,7 +700,16 @@
         </div>
       `;
 
-      document.getElementById('actSend').onclick = () => navTo('send/1');
+      document.getElementById('actSend').onclick = async () => {
+        freelancer = getFreelancerFromClerk();
+        if (!freelancer?.id) return alert(t('error'));
+        try {
+          await fetchProfile();
+        } catch (err) {
+          console.warn('[Payo] Profile preload failed:', err.message);
+        }
+        navTo('send/1');
+      };
       document.getElementById('actBill').onclick = () => navTo('bill/1');
       document.getElementById('actCollect').onclick = () => navTo('collect');
       document.getElementById('actGlobal').onclick = () => navTo('global');
@@ -640,10 +719,14 @@
       const greet = document.getElementById('greet');
       greet.textContent = `${t('greeting')} ${freelancer.name} 💚`;
 
+      wireFormInputs(document.getElementById('homeScreen'));
+
       (async () => {
         try {
           const profile = await fetchProfile();
-          document.getElementById('balAmt').textContent = formatMoneyNGN(profile.wallet_balance || 0);
+          const balance = profile?.wallet_balance ?? 0;
+          const balEl = document.getElementById('balAmt');
+          if (balEl) balEl.textContent = formatMoneyNGN(balance);
           const recent = await fetchRecentActivity();
           const list = document.getElementById('recentList');
           if (!recent.length) {
@@ -674,7 +757,7 @@
                   <div class="name">${escapeHtml(who)}</div>
                   <div class="sub">${escapeHtml(label)} • ${timeAgo(r.created_at)}</div>
                 </div>
-                <div class="amt ${amtClass}">${amountPrefix}${formatMoneyNGN(r.amount)}</div>
+                <div class="amt ${amtClass}">${amountPrefix}${formatMoney(r.amount, r.currency || 'NGN')}</div>
               </div>
             `;
           }).join('');
@@ -719,7 +802,7 @@
           try {
             const res = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache: 'no-store' });
             const j = await res.json().catch(() => ({}));
-            const items = (j.transfers || []).slice(0, 3).map(t => t.recipient_phone_or_email).filter(Boolean);
+            const items = (j.transfers || []).slice(0, 3).map((tr) => tr.recipient_phone_or_email).filter(Boolean);
             const holder = document.getElementById('recentContacts');
             holder.innerHTML = items.length ? items.map(c => `<button class="pill" type="button">${escapeHtml(c)}</button>`).join('') : `<div class="muted" style="font-size:12px">No recent contacts</div>`;
             holder.querySelectorAll('button').forEach((b) => {
@@ -729,6 +812,7 @@
             });
           } catch {}
         })();
+        wireFormInputs(host);
         return;
       }
 
@@ -771,6 +855,7 @@
             document.getElementById('previewName').textContent = 'Could not resolve';
           }
         })();
+        wireFormInputs(host);
         return;
       }
 
@@ -802,13 +887,14 @@
         });
         document.getElementById('backBtn').onclick = () => navTo('send/2');
         document.getElementById('nextBtn').onclick = () => {
-          const amt = Number(String(document.getElementById('amtInput').value).replace(/[^\\d.]/g,''));
+          const amt = parseAmount(document.getElementById('amtInput').value);
           if (!Number.isFinite(amt) || amt <= 0) return alert(t('error'));
           state.amount = amt;
           state.reason = document.getElementById('reasonInput').value.trim();
           sessionStorage.setItem('sendFlow', JSON.stringify(state));
           navTo('send/4');
         };
+        wireFormInputs(host);
         return;
       }
 
@@ -837,6 +923,8 @@
         document.getElementById('cancelBtn').onclick = () => { sessionStorage.removeItem('sendFlow'); navTo('home'); };
         document.getElementById('sendBtn').onclick = async () => {
           try{
+            freelancer = getFreelancerFromClerk();
+            if (!freelancer?.id) return alert(t('error'));
             const res = await fetch('/transfers/send', {
               method:'POST',
               headers: await getAuthHeaders(),
@@ -857,9 +945,10 @@
             sessionStorage.removeItem('sendFlow');
             navTo('send/5');
           } catch (err){
-            alert(err.message);
+            alert(err.message || t('error'));
           }
         };
+        wireFormInputs(host);
         return;
       }
 
@@ -924,6 +1013,7 @@
           sessionStorage.setItem('billFlow', JSON.stringify(state));
           navTo('bill/2');
         };
+        wireFormInputs(host);
         return;
       }
 
@@ -952,9 +1042,14 @@
         `;
         document.getElementById('backBtn').onclick = () => navTo('bill/1');
         document.getElementById('sendBillBtn').onclick = async () => {
-          try{
+          try {
+            freelancer = getFreelancerFromClerk();
+            if (!freelancer?.id || !freelancer?.email) {
+              return alert(t('error'));
+            }
+
             const currency = document.getElementById('curSel').value;
-            const amt = Number(String(document.getElementById('amtInput').value).replace(/[^\\d.]/g,''));
+            const amt = parseAmount(document.getElementById('amtInput').value);
             const desc = document.getElementById('descInput').value.trim();
             if (!Number.isFinite(amt) || amt <= 0 || !desc) return alert(t('error'));
             const contact = state.contact;
@@ -969,18 +1064,40 @@
               client_phone: !isEmail ? contact : null,
               project_description: desc,
               amount: amt,
-              due_date: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
-              currency
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+              currency,
             };
-            const res = await fetch('/invoices/create', { method:'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+
+            console.log('[Payo] Send Bill — POST /invoices/create:', JSON.stringify(payload));
+
+            const res = await fetch('/invoices/create', {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify(payload),
+            });
             const j = await res.json();
             if (!res.ok || !j.success) throw new Error(j.error || 'Failed to send bill');
+            sessionStorage.setItem(
+              'billReceipt',
+              JSON.stringify({ amount: amt, currency, clientName: state.name })
+            );
             sessionStorage.removeItem('billFlow');
             navTo('bill/3');
-          } catch (err){ alert(err.message); }
+          } catch (err) {
+            alert(err.message || t('error'));
+          }
         };
+        wireFormInputs(host);
         return;
       }
+
+      const receipt = JSON.parse(sessionStorage.getItem('billReceipt') || '{}');
+      const receiptAmount = receipt.amount != null ? formatMoney(receipt.amount, receipt.currency || 'NGN') : '';
+      const receiptLine = receipt.clientName && receiptAmount
+        ? `<div class="muted" style="margin-top:8px">${escapeHtml(receipt.clientName)} — ${receiptAmount}</div>`
+        : receiptAmount
+          ? `<div class="muted" style="margin-top:8px">${receiptAmount}</div>`
+          : '';
 
       host.innerHTML = `
         <div class="screen">
@@ -989,12 +1106,17 @@
               <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
             </div>
             <div style="font-weight:1000;font-size:18px">${t('billSent')}</div>
+            ${receiptLine}
             <div class="pillRow">
-              <button class="pill" type="button" onclick="location.hash='home'">Back to home</button>
+              <button class="pill" type="button" id="billHomeBtn">Back to home</button>
             </div>
           </div>
         </div>
       `;
+      document.getElementById('billHomeBtn').onclick = () => {
+        sessionStorage.removeItem('billReceipt');
+        navTo('home');
+      };
     }
 
     function renderCollectFlow() {
@@ -1017,6 +1139,7 @@
         </div>
       `;
       document.getElementById('reqBtn').onclick = () => alert('Request sent (stub)');
+      wireFormInputs(host);
     }
 
     function renderGlobalFlow() {
@@ -1054,7 +1177,7 @@
             client_name: document.getElementById('cname').value.trim(),
             client_email: document.getElementById('cemail').value.trim(),
             project_description: document.getElementById('desc').value.trim(),
-            amount: Number(String(document.getElementById('amt').value).replace(/[^\\d.]/g,'')),
+            amount: parseAmount(document.getElementById('amt').value),
             due_date: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
             currency: 'USD'
           };
@@ -1082,8 +1205,9 @@
             const url = `https://wa.me/?text=${encodeURIComponent('Pay here: ' + (j.payment_url || ''))}`;
             window.open(url, '_blank');
           };
-        } catch(err){ alert(err.message); }
+        } catch(err){ alert(err.message || t('error')); }
       };
+      wireFormInputs(host);
     }
 
     function renderTrack() {
@@ -1126,6 +1250,7 @@
                 kind:'invoice',
                 name: inv.client_name || inv.client_email || inv.client_phone || 'Invoice',
                 amount: Number(inv.amount || 0),
+                currency: inv.currency || 'NGN',
                 status: inv.status || 'pending',
                 date: inv.created_at || inv.updated_at || new Date().toISOString()
               });
@@ -1137,6 +1262,7 @@
                 kind:'transfer',
                 name: tr.recipient_phone_or_email || tr.recipient_id || 'Transfer',
                 amount: Number(tr.amount || 0),
+                currency: 'NGN',
                 status:'transfer',
                 date: tr.created_at || new Date().toISOString()
               });
@@ -1161,7 +1287,7 @@
                   <div class="name">${escapeHtml(who)}</div>
                   <div class="sub">${escapeHtml(label)} • ${new Date(r.date).toLocaleDateString()}</div>
                 </div>
-                <div class="amt ${cls}">${(r.kind==='transfer' ? '-' : '')}${formatMoneyNGN(r.amount)}</div>
+                <div class="amt ${cls}">${(r.kind==='transfer' ? '-' : '')}${formatMoney(r.amount, r.currency || 'NGN')}</div>
               </div>
             `;
           }).join('');
@@ -1177,17 +1303,17 @@
       host.innerHTML = `
         <div class="chatWrap">
           <div class="topbar" style="position:sticky;top:0">
-            <button class="iconbtn" type="button" id="backHome">←</button>
-            <div style="font-weight:900">Payo AI</div>
+            <button class="iconbtn" type="button" id="backHome">← ${t('back')}</button>
+            <div style="font-weight:900">${t('chatTitle')}</div>
             <div class="spacer"></div>
-            <button class="iconbtn" type="button" id="signOutBtn">Log out</button>
+            <button class="iconbtn" type="button" id="signOutBtn">${t('signOut')}</button>
           </div>
           <div class="chatBody" id="chatBody">
-            <div class="bubble received">Hi! I'm Payo. Tell me who to invoice — client name, email/phone, amount, due date, and what the work was for.<div class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div>
+            <div class="bubble received" id="chatWelcome">${escapeHtml(t('chatWelcome'))}<div class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div>
           </div>
           <div class="chatFoot">
-            <textarea class="input" id="chatInput" rows="1" placeholder="Message Payo..."></textarea>
-            <button class="btn" style="padding:12px 14px" id="chatSend">Send</button>
+            <textarea class="input" id="chatInput" rows="1" placeholder="${escapeAttr(t('chatPlaceholder'))}"></textarea>
+            <button class="btn" style="padding:12px 14px" id="chatSend">${t('chatSend')}</button>
           </div>
         </div>
       `;
@@ -1198,13 +1324,17 @@
       const chatInput = document.getElementById('chatInput');
       const chatSend = document.getElementById('chatSend');
 
-      chatInput.addEventListener('input', () => {
+      chatInput.addEventListener('click', (e) => e.stopPropagation());
+      chatInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      });
+      chatInput.addEventListener('input', (e) => {
+        e.stopPropagation();
         chatInput.style.height = 'auto';
         chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
       });
-      chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-      });
+      chatInput.addEventListener('focus', (e) => e.stopPropagation());
       chatSend.onclick = send;
 
       function addBubble(text, type) {
@@ -1218,6 +1348,11 @@
       async function send() {
         const text = chatInput.value.trim();
         if (!text || chatLoading) return;
+        freelancer = getFreelancerFromClerk();
+        if (!freelancer?.id || !freelancer?.email) {
+          addBubble(t('error'), 'received');
+          return;
+        }
         chatInput.value = '';
         chatInput.style.height = 'auto';
         addBubble(text, 'sent');
@@ -1236,16 +1371,17 @@
             })
           });
           const j = await res.json();
-          if (!res.ok) throw new Error(j.error || 'Chat failed');
+          if (!res.ok) throw new Error(j.error || t('error'));
           messages = j.messages || messages;
           addBubble(j.reply || 'Done', 'received');
         } catch(err) {
-          addBubble(`${t('error')}: ${err.message}`, 'received');
+          addBubble(t('error'), 'received');
         } finally {
           chatLoading = false;
           chatSend.disabled = false;
         }
       }
+      wireFormInputs(host);
     }
 
     function renderSettings() {
@@ -1274,10 +1410,10 @@
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = String(text ?? '');
-      return div.innerHTML.replace(/\\n/g, '<br>');
+      return div.innerHTML.replace(/\n/g, '<br>');
     }
     function escapeAttr(text) {
-      return String(text ?? '').replace(/\"/g, '&quot;');
+      return String(text ?? '').replace(/"/g, '&quot;');
     }
 
     function mountClerkAuth() {
@@ -1369,7 +1505,7 @@
           avatarEl.textContent = initials(freelancer.name);
           authScreen.classList.add('hidden');
           appEl.classList.remove('hidden');
-          render();
+          if (!isUserTyping()) safeRender(true);
         });
 
         if (window.Clerk.user) {
@@ -1377,7 +1513,7 @@
           avatarEl.textContent = initials(freelancer.name);
           authScreen.classList.add('hidden');
           appEl.classList.remove('hidden');
-          render();
+          safeRender(true);
         } else {
           mountClerkAuth();
         }
