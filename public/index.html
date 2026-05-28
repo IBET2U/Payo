@@ -1,531 +1,468 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Payo</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root{
+      --bg:#0b141a;
+      --primary:#00a884;
+      --card:#1f2c34;
+      --text:#e9edef;
+      --muted:#8696a0;
+      --border:#2a3942;
+      --danger:#ef4444;
+      --warn:#f59e0b;
+      --ok:#22c55e;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      min-height:100dvh;
+      display:flex;
+      justify-content:center;
+    }
+    .shell{
+      width:100%;
+      max-width:480px;
+      min-height:100dvh;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+    .hidden{display:none !important}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0b141a;
-      color: #e9edef;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
+    /* Shared */
+    .topbar{
+      flex-shrink:0;
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      border-bottom:1px solid var(--border);
+      background:rgba(31,44,52,.92);
+      backdrop-filter: blur(8px);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+    .logo{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .pbadge{
+      width:34px;height:34px;border-radius:10px;
+      background:linear-gradient(135deg,#0fd6aa, #00a884);
+      display:flex;align-items:center;justify-content:center;
+      color:#06221a;font-weight:900;
+    }
+    .spacer{flex:1}
+    .iconbtn{
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--text);
+      border-radius:12px;
+      padding:8px 10px;
+      font-size:13px;
+      cursor:pointer;
+      transition: all .18s ease;
+    }
+    .iconbtn:hover{border-color:#3b4a53}
+    .avatar{
+      width:34px;height:34px;border-radius:50%;
+      background:linear-gradient(135deg,#00a884,#007c62);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:#042018;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+    }
+    .btn{
+      border:none;
+      background:var(--primary);
+      color:#fff;
+      padding:12px 14px;
+      border-radius:14px;
+      font-weight:700;
+      cursor:pointer;
+      transition: transform .08s ease, filter .18s ease;
+    }
+    .btn:active{transform:scale(.98)}
+    .btn.secondary{
+      background:transparent;
+      border:1px solid var(--border);
+      color:var(--text);
+    }
+    .btn.ghost{
+      background:transparent;
+      color:var(--muted);
+      border:none;
+      padding:10px 8px;
+      font-weight:600;
+    }
+    .input{
+      width:100%;
+      border:1px solid var(--border);
+      background:#121f27;
+      color:var(--text);
+      border-radius:14px;
+      padding:14px 14px;
+      font-size:16px;
+      outline:none;
+    }
+    .input:focus{border-color:#2d907a}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center}
+    .col{display:flex;flex-direction:column;gap:10px}
+    .screen{
+      flex:1;
+      min-height:0;
+      overflow:auto;
+      padding:14px 16px 92px;
+      animation: slideIn .22s ease;
+    }
+    @keyframes slideIn{
+      from{transform:translateX(10px);opacity:.7}
+      to{transform:translateX(0);opacity:1}
+    }
+    .nav{
+      position:sticky;
+      bottom:0;
+      background:rgba(31,44,52,.92);
+      border-top:1px solid var(--border);
+      padding:10px 10px 14px;
+      display:flex;
+      gap:8px;
+      justify-content:space-around;
+      backdrop-filter: blur(8px);
+      z-index:9;
+    }
+    .nav .tab{
+      flex:1;
+      text-align:center;
+      padding:10px 8px;
+      border-radius:14px;
+      color:var(--muted);
+      border:1px solid transparent;
+      cursor:pointer;
+      font-size:12px;
+      transition: all .18s ease;
+    }
+    .nav .tab.active{
+      color:var(--text);
+      border-color:var(--border);
+      background:#14222a;
+    }
+    .nav .tab span{display:block;font-size:18px;margin-bottom:4px}
+
+    /* Auth */
+    #auth-screen{padding:22px 16px 40px}
+    .authBrand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:18px;margin-bottom:18px}
+    .authBrand h1{font-size:22px}
+    .authBrand p{font-size:13px;color:var(--muted);text-align:center;max-width:320px;line-height:1.35}
+    #clerk-auth{width:100%;max-width:420px;margin:0 auto}
+    #auth-loading{color:var(--muted);text-align:center;margin-top:16px}
+
+    /* Home */
+    .balanceCard{
+      padding:16px;
+      background:linear-gradient(135deg,#0e3d33,#0a2c24 55%, #081f1a);
+      border:1px solid rgba(0,168,132,.35);
+    }
+    .balanceTop{display:flex;align-items:flex-start;gap:10px}
+    .balanceTop .greet{font-weight:800;font-size:16px}
+    .balanceLabel{font-size:12px;color:#ccefe7;margin-top:2px}
+    .balanceAmt{font-size:34px;font-weight:900;letter-spacing:-.5px;margin-top:8px}
+    .balanceActions{display:flex;gap:10px;margin-top:12px}
+    .miniBtn{
+      flex:1;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.12);
+      color:var(--text);
+      font-weight:700;
+      cursor:pointer;
+      transition: all .18s ease;
+    }
+    .miniBtn:hover{filter:brightness(1.05)}
+
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .action{
+      padding:14px 12px;
+      border-radius:16px;
+      background:#14222a;
+      border:1px solid var(--border);
+      cursor:pointer;
+      transition: transform .08s ease, border-color .18s ease;
+      min-height:78px;
+    }
+    .action:active{transform:scale(.99)}
+    .action .emoji{font-size:22px}
+    .action .title{margin-top:8px;font-weight:800}
+    .action .sub{margin-top:2px;font-size:12px;color:var(--muted)}
+
+    .sectionTitle{margin-top:18px;margin-bottom:10px;font-size:14px;font-weight:900;letter-spacing:.2px}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{
+      padding:12px;
+      display:flex;align-items:center;gap:10px;
+      border-radius:16px;
+      border:1px solid var(--border);
+      background:#121f27;
+    }
+    .item .badge{
+      width:40px;height:40px;border-radius:50%;
+      background:#0f2a22;
+      border:1px solid rgba(0,168,132,.35);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:900;color:#7ff0d6;
+      flex-shrink:0;
+    }
+    .item .meta{flex:1;min-width:0}
+    .item .meta .name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .item .meta .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .item .amt{font-weight:900}
+    .amt.ok{color:var(--ok)}
+    .amt.warn{color:var(--warn)}
+    .amt.out{color:var(--danger)}
+
+    /* Floating AI */
+    .aiFab{
+      position:fixed;
+      right:18px;
+      bottom:86px;
+      width:58px;height:58px;
+      border-radius:999px;
+      background:radial-gradient(circle at 30% 30%,#18f1c1, #00a884 55%, #007c62);
+      border:1px solid rgba(255,255,255,.12);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;
+      box-shadow:0 14px 30px rgba(0,0,0,.35);
+      animation:pulse 1.7s ease-in-out infinite;
+      z-index:20;
+    }
+    .aiFab span{
+      font-weight:1000;
+      font-size:20px;
+      color:#06221a;
+      letter-spacing:.3px;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(1); box-shadow:0 14px 30px rgba(0,0,0,.35)}
+      50%{transform:scale(1.03); box-shadow:0 18px 40px rgba(0,168,132,.18)}
     }
 
-    #auth-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
-      background: #0b141a;
+    /* Chat */
+    .chatWrap{
+      height:calc(100dvh - 54px);
+      display:flex;flex-direction:column;
+    }
+    .chatBody{
+      flex:1;
+      overflow:auto;
+      padding:14px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background:var(--bg) url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111b21' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .bubble{
+      max-width:85%;
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:14.5px;
+      line-height:1.42;
+      word-wrap:break-word;
+    }
+    .received{align-self:flex-start;background:#005c4b;border-top-left-radius:6px}
+    .sent{align-self:flex-end;background:#fff;color:#111b21;border-top-right-radius:6px}
+    .bubble .time{font-size:11px;color:rgba(255,255,255,.7);text-align:right;margin-top:6px}
+    .sent .time{color:#667781}
+    .chatFoot{
+      padding:10px;
+      background:rgba(31,44,52,.92);
+      border-top:1px solid var(--border);
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+    }
+    textarea{
+      resize:none;
+      max-height:140px;
+      min-height:44px;
     }
 
-    #auth-screen.hidden { display: none; }
-
-    .auth-brand {
-      text-align: center;
-      margin-bottom: 28px;
+    /* Success */
+    .center{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;
+      padding:28px 16px;
     }
-
-    .auth-brand .avatar {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: #00a884;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 28px;
-      color: #fff;
-      margin: 0 auto 16px;
+    .check{
+      width:92px;height:92px;border-radius:50%;
+      background:rgba(34,197,94,.15);
+      border:1px solid rgba(34,197,94,.35);
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:14px;
+      animation:pop .25s ease;
     }
-
-    .auth-brand h1 {
-      font-size: 22px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .auth-brand p {
-      font-size: 14px;
-      color: #8696a0;
-      max-width: 280px;
-    }
-
-    #clerk-auth {
-      width: 100%;
-      max-width: 400px;
-    }
-
-    #profile-screen {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
-      overflow-y: auto;
-    }
-
-    #profile-screen.visible { display: flex; }
-
-    .profile-card {
-      width: 100%;
-      max-width: 400px;
-      background: #1f2c34;
-      border-radius: 12px;
-      padding: 24px;
-      border: 1px solid #2a3942;
-    }
-
-    .profile-card h2 {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .profile-card .subtitle {
-      font-size: 13px;
-      color: #8696a0;
-      margin-bottom: 20px;
-      line-height: 1.4;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      color: #8696a0;
-      margin-bottom: 6px;
-    }
-
-    .form-group input {
-      width: 100%;
-      background: #2a3942;
-      border: 1px solid #2a3942;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #e9edef;
-      font-size: 15px;
-      font-family: inherit;
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: #00a884;
-    }
-
-    .form-group input::placeholder { color: #667781; }
-
-    .form-hint {
-      font-size: 11px;
-      color: #667781;
-      margin-top: 4px;
-    }
-
-    .profile-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    #saveProfileBtn {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: #00a884;
-      color: #fff;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    #saveProfileBtn:disabled {
-      background: #2a3942;
-      cursor: not-allowed;
-    }
-
-    #skipProfileBtn {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: #8696a0;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    #skipProfileBtn:hover { color: #e9edef; }
-
-    #profileError {
-      color: #ea4335;
-      font-size: 13px;
-      margin-bottom: 12px;
-      display: none;
-    }
-
-    #app-screen {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    #app-screen.visible {
-      display: flex;
-    }
-
-    header {
-      background: #1f2c34;
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid #2a3942;
-      flex-shrink: 0;
-    }
-
-    header .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #00a884;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 18px;
-      color: #fff;
-    }
-
-    header .header-text { flex: 1; min-width: 0; }
-
-    header h1 {
-      font-size: 17px;
-      font-weight: 500;
-    }
-
-    header p {
-      font-size: 13px;
-      color: #8696a0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #signOutBtn {
-      background: transparent;
-      border: 1px solid #2a3942;
-      color: #8696a0;
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    #signOutBtn:hover {
-      color: #e9edef;
-      border-color: #8696a0;
-    }
-
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      background: #0b141a url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111b21' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-
-    .bubble {
-      max-width: 85%;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 14.5px;
-      line-height: 1.45;
-      word-wrap: break-word;
-      position: relative;
-    }
-
-    .bubble .time {
-      font-size: 11px;
-      color: #8696a0;
-      text-align: right;
-      margin-top: 4px;
-    }
-
-    .received {
-      align-self: flex-start;
-      background: #005c4b;
-      color: #e9edef;
-      border-top-left-radius: 0;
-    }
-
-    .sent {
-      align-self: flex-end;
-      background: #fff;
-      color: #111b21;
-      border-top-right-radius: 0;
-    }
-
-    .sent .time { color: #667781; }
-
-    .typing {
-      align-self: flex-start;
-      background: #005c4b;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border-top-left-radius: 0;
-      display: none;
-    }
-
-    .typing span {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      background: #8696a0;
-      border-radius: 50%;
-      margin: 0 2px;
-      animation: bounce 1.2s infinite;
-    }
-
-    .typing span:nth-child(2) { animation-delay: 0.2s; }
-    .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 60%, 100% { transform: translateY(0); }
-      30% { transform: translateY(-4px); }
-    }
-
-    footer {
-      background: #1f2c34;
-      padding: 8px 10px;
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-      flex-shrink: 0;
-    }
-
-    #messageInput {
-      flex: 1;
-      background: #2a3942;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #e9edef;
-      font-size: 15px;
-      resize: none;
-      max-height: 120px;
-      line-height: 1.4;
-      font-family: inherit;
-    }
-
-    #messageInput::placeholder { color: #8696a0; }
-    #messageInput:focus { outline: none; }
-
-    #sendBtn {
-      width: 44px;
-      height: 44px;
-      border: none;
-      border-radius: 50%;
-      background: #00a884;
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    #sendBtn:disabled {
-      background: #2a3942;
-      cursor: not-allowed;
-    }
-
-    #sendBtn svg { width: 20px; height: 20px; }
-
-    #auth-loading {
-      color: #8696a0;
-      font-size: 14px;
+    @keyframes pop{from{transform:scale(.9);opacity:.6}to{transform:scale(1);opacity:1}}
+    .check svg{width:50px;height:50px;fill:var(--ok)}
+    .pillRow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+    .pill{
+      padding:10px 12px;border-radius:999px;border:1px solid var(--border);
+      background:#14222a;color:var(--text);font-weight:700;cursor:pointer;
     }
   </style>
 </head>
 <body>
-  <div id="auth-screen">
-    <div class="auth-brand">
-      <div class="avatar">P</div>
-      <h1>Payo</h1>
-      <p>Sign in to manage invoices and get paid — your AI payment agent for African freelancers.</p>
-    </div>
-    <p id="auth-loading">Loading...</p>
-    <div id="clerk-auth"></div>
-  </div>
-
-  <div id="profile-screen">
-    <div class="auth-brand">
-      <div class="avatar">P</div>
-      <h1>Payo</h1>
-      <p>One quick step before you start invoicing.</p>
-    </div>
-    <div class="profile-card">
-      <h2>Set up your profile</h2>
-      <p class="subtitle">Add where you want to receive USDC payments and your WhatsApp number for payment alerts.</p>
-      <p id="profileError"></p>
-      <form id="profileForm">
-        <div class="form-group">
-          <label for="walletAddress">USDC wallet address</label>
-          <input type="text" id="walletAddress" name="walletAddress" placeholder="0x... or your USDC address" autocomplete="off">
-          <p class="form-hint">Used for USD invoice payouts via crypto</p>
-        </div>
-        <div class="form-group">
-          <label for="phoneNumber">WhatsApp phone number</label>
-          <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+2348012345678" autocomplete="tel">
-          <p class="form-hint">Include country code for notifications</p>
-        </div>
-        <div class="profile-actions">
-          <button type="submit" id="saveProfileBtn">Save & continue</button>
-          <button type="button" id="skipProfileBtn">Skip for now</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="app-screen">
-    <header>
-      <div class="avatar" id="userAvatar">P</div>
-      <div class="header-text">
+  <div class="shell">
+    <!-- SCREEN 1: AUTH -->
+    <div id="auth-screen">
+      <div class="authBrand">
+        <div class="pbadge">P</div>
         <h1>Payo</h1>
-        <p id="userEmail">Your payment agent</p>
+        <p>Sign in to use your AI payment agent. Built for Nigeria.</p>
       </div>
-      <button type="button" id="signOutBtn">Sign out</button>
-    </header>
-
-    <div id="chat">
-      <div class="bubble received">
-        Hi! I'm Payo. Tell me who to invoice — client name, email, amount, due date, and what the work was for.
-        <div class="time" id="welcomeTime"></div>
-      </div>
-      <div class="typing" id="typing">
-        <span></span><span></span><span></span>
-      </div>
+      <p id="auth-loading">Loading...</p>
+      <div id="clerk-auth"></div>
     </div>
 
-    <footer>
-      <textarea id="messageInput" rows="1" placeholder="Message Payo..."></textarea>
-      <button id="sendBtn" aria-label="Send">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </footer>
+    <!-- SCREEN 2+: APP -->
+    <div id="app" class="hidden">
+      <div class="topbar">
+        <div class="logo">
+          <div class="pbadge">P</div>
+          <div>Payo</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="langToggle" class="iconbtn" type="button">PID</button>
+        <button id="settingsBtn" class="iconbtn" type="button">⚙️</button>
+        <div class="avatar" id="avatar">P</div>
+      </div>
+
+      <div id="screenHost"></div>
+
+      <div class="nav">
+        <div class="tab active" data-tab="home"><span>🏠</span>Home</div>
+        <div class="tab" data-tab="track"><span>🧾</span>Track</div>
+        <div class="tab" data-tab="chat"><span>🤖</span>AI</div>
+        <div class="tab" data-tab="settings"><span>⚙️</span>Settings</div>
+      </div>
+
+      <button class="aiFab" id="aiFab" type="button" aria-label="Open AI chat"><span>P</span></button>
+    </div>
   </div>
 
   <script>
+    const TRANSLATIONS = {
+      en: {
+        greeting: \"Good morning\",
+        sendMoney: \"Send Money\",
+        sendBill: \"Send Bill\",
+        collectMoney: \"Request Money\",
+        globalPayment: \"Get Paid Globally\",
+        balance: \"Your Payo Balance\",
+        pending: \"Pending\",
+        paid: \"Paid\",
+        billSent: \"Bill sent! I'll follow up automatically 💚\",
+        moneySent: \"Money sent successfully! 🎉\",
+        whoOwes: \"Who owes you money?\",
+        howMuch: \"How much?\",
+        whatDidYouDo: \"What did you do for them?\",
+        sendTo: \"Phone number or email\",
+        confirm: \"Confirm\",
+        cancel: \"Cancel\",
+        back: \"Back\",
+        loading: \"Loading...\",
+        error: \"Something went wrong\"
+      },
+      pid: {
+        greeting: \"How far\",
+        sendMoney: \"Send Owo\",
+        sendBill: \"Send Bill\",
+        collectMoney: \"Collect Money\",
+        globalPayment: \"International Payment\",
+        balance: \"Your Payo Money\",
+        pending: \"Still dey wait\",
+        paid: \"E don pay\",
+        billSent: \"Bill don go! I go dey chase dem if dem no pay 💚\",
+        moneySent: \"Omo! Money don go! 🎉\",
+        whoOwes: \"Who owe you money?\",
+        howMuch: \"How much dem owe you?\",
+        whatDidYouDo: \"Wetin you do for dem?\",
+        sendTo: \"Phone number or email\",
+        confirm: \"E correct\",
+        cancel: \"Comot\",
+        back: \"Go back\",
+        loading: \"E dey go...\",
+        error: \"Something do, try again\"
+      }
+    };
+
+    function t(key) {
+      const lang = localStorage.getItem('payoLang') || 'pid';
+      return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.en[key] || key;
+    }
+
     const authScreen = document.getElementById('auth-screen');
-    const profileScreen = document.getElementById('profile-screen');
-    const appScreen = document.getElementById('app-screen');
     const authLoading = document.getElementById('auth-loading');
     const clerkAuthEl = document.getElementById('clerk-auth');
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const typing = document.getElementById('typing');
-    const signOutBtn = document.getElementById('signOutBtn');
-    const profileForm = document.getElementById('profileForm');
-    const profileError = document.getElementById('profileError');
-    const saveProfileBtn = document.getElementById('saveProfileBtn');
-    const skipProfileBtn = document.getElementById('skipProfileBtn');
+    const appEl = document.getElementById('app');
+    const host = document.getElementById('screenHost');
+    const avatarEl = document.getElementById('avatar');
+    const langToggle = document.getElementById('langToggle');
+    const aiFab = document.getElementById('aiFab');
+    const settingsBtn = document.getElementById('settingsBtn');
 
-    let messages = [];
-    let loading = false;
     let clerkSignInMounted = false;
     let clerkSignUpMounted = false;
     let freelancer = null;
     let userProfile = null;
+    let messages = [];
+    let chatLoading = false;
 
-    function profileSetupStorageKey(userId) {
-      return `payoProfileComplete_${userId}`;
+    function getLang() { return localStorage.getItem('payoLang') || 'pid'; }
+    function setLang(lang) { localStorage.setItem('payoLang', lang); }
+
+    function formatMoneyNGN(n) {
+      const num = Number(n || 0);
+      if (!Number.isFinite(num)) return '₦0';
+      return '₦' + num.toLocaleString('en-NG', { maximumFractionDigits: 2 });
     }
 
-    function isProfileSetupDone(userId) {
-      return localStorage.getItem(profileSetupStorageKey(userId)) === 'true';
+    function timeAgo(iso) {
+      const d = new Date(iso);
+      const ms = Date.now() - d.getTime();
+      const min = Math.floor(ms / 60000);
+      if (min < 1) return 'now';
+      if (min < 60) return `${min}m`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h`;
+      const day = Math.floor(hr / 24);
+      return `${day}d`;
     }
 
-    function markProfileSetupDone(userId) {
-      localStorage.setItem(profileSetupStorageKey(userId), 'true');
-    }
-
-    document.getElementById('welcomeTime').textContent = formatTime(new Date());
-
-    input.addEventListener('input', () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-    });
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    sendBtn.addEventListener('click', sendMessage);
-
-    signOutBtn.addEventListener('click', async () => {
-      if (window.Clerk) {
-        await window.Clerk.signOut();
-      }
-    });
-
-    profileForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      saveProfile();
-    });
-
-    skipProfileBtn.addEventListener('click', () => {
-      freelancer = getFreelancerFromClerk();
-      if (freelancer?.id) markProfileSetupDone(freelancer.id);
-      showChat();
-    });
-
-    function formatTime(date) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function getFreelancerFromClerk() {
-      const user = window.Clerk?.user;
-      if (!user) return null;
-
-      const email =
-        user.primaryEmailAddress?.emailAddress ||
-        user.emailAddresses?.[0]?.emailAddress ||
-        '';
-
-      const name =
-        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-        user.fullName ||
-        user.username ||
-        email.split('@')[0] ||
-        'Freelancer';
-
-      return {
-        id: user.id,
-        email,
-        name,
-      };
+    function initials(nameOrEmail) {
+      const s = String(nameOrEmail || '').trim();
+      if (!s) return 'P';
+      const parts = s.split(/\\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
 
     async function getAuthHeaders() {
@@ -535,173 +472,820 @@
       return headers;
     }
 
-    function hideAllScreens() {
-      authScreen.classList.add('hidden');
-      profileScreen.classList.remove('visible');
-      appScreen.classList.remove('visible');
-    }
-
-    function showAuth() {
-      hideAllScreens();
-      authScreen.classList.remove('hidden');
-      freelancer = null;
-      userProfile = null;
-      mountClerkAuth();
-    }
-
-    function showProfileSetup() {
-      freelancer = getFreelancerFromClerk();
-      if (!freelancer?.id || !freelancer?.email) {
-        showAuth();
-        return;
-      }
-
-      hideAllScreens();
-      profileScreen.classList.add('visible');
-      profileError.style.display = 'none';
-
-      if (userProfile?.wallet_address) {
-        document.getElementById('walletAddress').value = userProfile.wallet_address;
-      }
-      if (userProfile?.phone) {
-        document.getElementById('phoneNumber').value = userProfile.phone;
-      }
-    }
-
-    function showChat() {
-      freelancer = getFreelancerFromClerk();
-      if (!freelancer?.id || !freelancer?.email) {
-        showAuth();
-        return;
-      }
-
-      hideAllScreens();
-      appScreen.classList.add('visible');
-
-      const initial = (freelancer.name || freelancer.email)[0].toUpperCase();
-      document.getElementById('userAvatar').textContent = initial;
-      document.getElementById('userEmail').textContent = freelancer.email;
+    function getFreelancerFromClerk() {
+      const user = window.Clerk?.user;
+      if (!user) return null;
+      const email =
+        user.primaryEmailAddress?.emailAddress ||
+        user.emailAddresses?.[0]?.emailAddress ||
+        '';
+      const name =
+        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+        user.fullName ||
+        user.username ||
+        email.split('@')[0] ||
+        'Freelancer';
+      return { id: user.id, email, name };
     }
 
     async function fetchProfile() {
-      const res = await fetch('/profile', {
-        headers: await getAuthHeaders(),
-        cache: 'no-store',
-      });
-
-      if (res.status === 401) {
-        showAuth();
-        throw new Error('Session expired');
-      }
-
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error('Profile API returned invalid response');
-      }
-
+      const res = await fetch('/profile', { headers: await getAuthHeaders(), cache: 'no-store' });
+      if (res.status === 401) throw new Error('Unauthenticated');
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load profile');
       userProfile = data.profile;
-      return data;
+      return data.profile;
     }
 
-    async function routeAfterLogin() {
-      freelancer = getFreelancerFromClerk();
-      if (!freelancer?.id || !freelancer?.email) {
-        showAuth();
+    async function fetchRecentActivity() {
+      // invoices: last 5
+      const invoicesRes = await fetch(`/invoices/${encodeURIComponent(freelancer.id)}`, {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const invoicesJson = await invoicesRes.json().catch(() => ({}));
+      const invoices = invoicesRes.ok ? (invoicesJson.invoices || []) : [];
+
+      // transfers: last 5
+      const transfersRes = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const transfersJson = await transfersRes.json().catch(() => ({}));
+      const transfers = transfersRes.ok ? (transfersJson.transfers || []) : [];
+
+      const recent = [];
+      for (const inv of invoices.slice(0, 5)) {
+        recent.push({
+          kind: 'invoice',
+          name: inv.client_name || inv.client_email || inv.client_phone || 'Invoice',
+          amount: Number(inv.amount || 0),
+          status: inv.status || 'pending',
+          created_at: inv.created_at || inv.updated_at || new Date().toISOString(),
+        });
+      }
+      for (const tr of transfers.slice(0, 5)) {
+        recent.push({
+          kind: 'transfer',
+          name: tr.recipient_phone_or_email || tr.recipient_id || 'Transfer',
+          amount: Number(tr.amount || 0),
+          status: 'transfer',
+          created_at: tr.created_at || new Date().toISOString(),
+        });
+      }
+
+      recent.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return recent.slice(0, 5);
+    }
+
+    function setActiveTab(tab) {
+      document.querySelectorAll('.nav .tab').forEach((el) => {
+        el.classList.toggle('active', el.dataset.tab === tab);
+      });
+    }
+
+    function render() {
+      const route = window.location.hash.replace('#', '') || 'home';
+      if (route === 'home') return renderHome();
+      if (route.startsWith('send')) return renderSendFlow(route);
+      if (route.startsWith('bill')) return renderBillFlow(route);
+      if (route.startsWith('collect')) return renderCollectFlow(route);
+      if (route.startsWith('global')) return renderGlobalFlow(route);
+      if (route === 'track') return renderTrack();
+      if (route === 'chat') return renderChat();
+      if (route === 'settings') return renderSettings();
+      return renderHome();
+    }
+
+    function navTo(route) {
+      window.location.hash = route;
+    }
+
+    langToggle.addEventListener('click', () => {
+      const next = getLang() === 'pid' ? 'en' : 'pid';
+      setLang(next);
+      langToggle.textContent = next.toUpperCase();
+      render();
+    });
+
+    aiFab.addEventListener('click', () => navTo('chat'));
+    settingsBtn.addEventListener('click', () => navTo('settings'));
+
+    document.querySelectorAll('.nav .tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        navTo(tab.dataset.tab);
+      });
+    });
+
+    window.addEventListener('hashchange', render);
+
+    function renderHome() {
+      setActiveTab('home');
+      host.innerHTML = `
+        <div class="screen" id="homeScreen">
+          <div class="card balanceCard">
+            <div class="balanceTop">
+              <div class="col" style="gap:2px;flex:1">
+                <div class="greet" id="greet"></div>
+                <div class="balanceLabel">${t('balance')}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted" style="font-size:12px">NGN</div>
+              </div>
+            </div>
+            <div class="balanceAmt" id="balAmt">₦0</div>
+            <div class="balanceActions">
+              <button type="button" class="miniBtn" id="topUpBtn">Top Up</button>
+              <button type="button" class="miniBtn" id="withdrawBtn">Withdraw</button>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="action" id="actSend">
+              <div class="emoji">💸</div>
+              <div class="title">${t('sendMoney')}</div>
+              <div class="sub">${getLang()==='pid'?'Send quick to phone/email':'Send to phone/email'}</div>
+            </div>
+            <div class="action" id="actBill">
+              <div class="emoji">📩</div>
+              <div class="title">${t('sendBill')}</div>
+              <div class="sub">${getLang()==='pid'?'Create invoice':'Send invoice'}</div>
+            </div>
+            <div class="action" id="actCollect">
+              <div class="emoji">🤝</div>
+              <div class="title">${t('collectMoney')}</div>
+              <div class="sub">${getLang()==='pid'?'Send request':'Request payment'}</div>
+            </div>
+            <div class="action" id="actGlobal">
+              <div class="emoji">🌍</div>
+              <div class="title">${t('globalPayment')}</div>
+              <div class="sub">${getLang()==='pid'?'For outside Nigeria':'Get paid in USD'}</div>
+            </div>
+          </div>
+
+          <div class="sectionTitle">Recent</div>
+          <div class="list" id="recentList">
+            <div class="item"><div class="meta"><div class="name">${t('loading')}</div><div class="sub muted">...</div></div></div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('actSend').onclick = () => navTo('send/1');
+      document.getElementById('actBill').onclick = () => navTo('bill/1');
+      document.getElementById('actCollect').onclick = () => navTo('collect');
+      document.getElementById('actGlobal').onclick = () => navTo('global');
+      document.getElementById('topUpBtn').onclick = () => alert('Top up coming soon');
+      document.getElementById('withdrawBtn').onclick = () => alert('Withdraw coming soon');
+
+      const greet = document.getElementById('greet');
+      greet.textContent = `${t('greeting')} ${freelancer.name} 💚`;
+
+      (async () => {
+        try {
+          const profile = await fetchProfile();
+          document.getElementById('balAmt').textContent = formatMoneyNGN(profile.wallet_balance || 0);
+          const recent = await fetchRecentActivity();
+          const list = document.getElementById('recentList');
+          if (!recent.length) {
+            list.innerHTML = `<div class="item"><div class="meta"><div class="name">No activity yet</div><div class="sub muted">Create an invoice or send money</div></div></div>`;
+            return;
+          }
+          list.innerHTML = recent.map((r) => {
+            const who = r.name;
+            const ini = initials(who);
+            let amtClass = 'warn';
+            let label = r.status;
+            let amountPrefix = '';
+            if (r.kind === 'transfer') {
+              amtClass = 'out';
+              label = 'Transfer out';
+              amountPrefix = '-';
+            } else if (String(r.status).toLowerCase() === 'paid') {
+              amtClass = 'ok';
+              label = t('paid');
+            } else {
+              amtClass = 'warn';
+              label = t('pending');
+            }
+            return `
+              <div class="item">
+                <div class="badge">${ini}</div>
+                <div class="meta">
+                  <div class="name">${escapeHtml(who)}</div>
+                  <div class="sub">${escapeHtml(label)} • ${timeAgo(r.created_at)}</div>
+                </div>
+                <div class="amt ${amtClass}">${amountPrefix}${formatMoneyNGN(r.amount)}</div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          const list = document.getElementById('recentList');
+          list.innerHTML = `<div class="item"><div class="meta"><div class="name">${t('error')}</div><div class="sub muted">${escapeHtml(err.message)}</div></div></div>`;
+        }
+      })();
+    }
+
+    function renderSendFlow(route) {
+      setActiveTab('home');
+      const step = route.split('/')[1] || '1';
+      const state = JSON.parse(sessionStorage.getItem('sendFlow') || '{}');
+
+      if (step === '1') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('sendMoney')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('sendTo')}</div>
+              <input class="input" id="recipientInput" placeholder="${t('sendTo')}" value="${state.recipient || ''}">
+              <div class="muted" style="font-size:12px;margin-top:10px">Recent contacts</div>
+              <div class="pillRow" id="recentContacts"></div>
+              <div class="row" style="margin-top:12px">
+                <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="nextBtn">Next</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('backBtn').onclick = () => navTo('home');
+        document.getElementById('nextBtn').onclick = () => {
+          const v = document.getElementById('recipientInput').value.trim();
+          if (!v) return alert(t('error'));
+          state.recipient = v;
+          sessionStorage.setItem('sendFlow', JSON.stringify(state));
+          navTo('send/2');
+        };
+        (async () => {
+          try {
+            const res = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+            const j = await res.json().catch(() => ({}));
+            const items = (j.transfers || []).slice(0, 3).map(t => t.recipient_phone_or_email).filter(Boolean);
+            const holder = document.getElementById('recentContacts');
+            holder.innerHTML = items.length ? items.map(c => `<button class="pill" type="button">${escapeHtml(c)}</button>`).join('') : `<div class="muted" style="font-size:12px">No recent contacts</div>`;
+            holder.querySelectorAll('button').forEach((b) => {
+              b.onclick = () => {
+                document.getElementById('recipientInput').value = b.textContent;
+              };
+            });
+          } catch {}
+        })();
         return;
       }
 
-      if (isProfileSetupDone(freelancer.id)) {
-        showChat();
+      if (step === '2') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('sendMoney')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:6px">Preview</div>
+              <div class="row">
+                <div class="badge" style="width:44px;height:44px">${initials(state.recipient)}</div>
+                <div class="col" style="gap:2px">
+                  <div style="font-weight:900" id="previewName">Resolving...</div>
+                  <div class="muted" style="font-size:12px">Sending to: ${escapeHtml(state.recipient || '')}</div>
+                </div>
+              </div>
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="changeBtn">Change</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="confirmBtn">${t('confirm')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('changeBtn').onclick = () => navTo('send/1');
+        document.getElementById('confirmBtn').onclick = () => navTo('send/3');
+        (async () => {
+          try {
+            const res = await fetch('/transfers/resolve', {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify({ phoneOrEmail: state.recipient }),
+            });
+            const j = await res.json();
+            document.getElementById('previewName').textContent =
+              j.previewName || (j.recipient?.type === 'external' ? 'External recipient' : 'Recipient');
+            state.resolved = j.recipient;
+            sessionStorage.setItem('sendFlow', JSON.stringify(state));
+          } catch (err) {
+            document.getElementById('previewName').textContent = 'Could not resolve';
+          }
+        })();
         return;
       }
 
-      try {
-        const { has_wallet, profile } = await fetchProfile();
+      if (step === '3') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('sendMoney')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('howMuch')}</div>
+              <input class="input" id="amtInput" inputmode="numeric" placeholder="₦0" value="${state.amount || ''}">
+              <div class="muted" style="font-size:12px;margin-top:10px">Wetin be the reason?</div>
+              <input class="input" id="reasonInput" placeholder="Optional" value="${state.reason || ''}">
+              <div class="pillRow">
+                <button class="pill" type="button" data-q="5000">₦5,000</button>
+                <button class="pill" type="button" data-q="10000">₦10,000</button>
+                <button class="pill" type="button" data-q="20000">₦20,000</button>
+                <button class="pill" type="button" data-q="50000">₦50,000</button>
+              </div>
+              <div class="row" style="margin-top:12px">
+                <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="nextBtn">Next</button>
+              </div>
+            </div>
+          </div>
+        `;
+        host.querySelectorAll('[data-q]').forEach((b) => {
+          b.onclick = () => (document.getElementById('amtInput').value = b.dataset.q);
+        });
+        document.getElementById('backBtn').onclick = () => navTo('send/2');
+        document.getElementById('nextBtn').onclick = () => {
+          const amt = Number(String(document.getElementById('amtInput').value).replace(/[^\\d.]/g,''));
+          if (!Number.isFinite(amt) || amt <= 0) return alert(t('error'));
+          state.amount = amt;
+          state.reason = document.getElementById('reasonInput').value.trim();
+          sessionStorage.setItem('sendFlow', JSON.stringify(state));
+          navTo('send/4');
+        };
+        return;
+      }
 
-        if (!profile?.email || !profile?.name) {
-          const bootstrapRes = await fetch('/profile', {
-            method: 'POST',
-            headers: await getAuthHeaders(),
-            body: JSON.stringify({
-              email: freelancer.email,
-              name: freelancer.name,
-            }),
-          });
-          if (bootstrapRes.ok) {
-            const refreshed = await fetchProfile();
-            userProfile = refreshed.profile;
-            if (refreshed.has_wallet) {
-              markProfileSetupDone(freelancer.id);
-              showChat();
+      if (step === '4') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('confirm')}</div>
+            <div class="card" style="padding:14px">
+              <div style="font-weight:900">Summary</div>
+              <div class="muted" style="font-size:12px;margin-top:8px">To</div>
+              <div style="font-weight:800">${escapeHtml(state.recipient || '')}</div>
+              <div class="muted" style="font-size:12px;margin-top:10px">Amount</div>
+              <div style="font-weight:1000;font-size:22px">${formatMoneyNGN(state.amount || 0)}</div>
+              <div class="muted" style="font-size:12px;margin-top:10px">Reason</div>
+              <div>${escapeHtml(state.reason || '—')}</div>
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="cancelBtn">${t('cancel')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="sendBtn">Confirm Send</button>
+              </div>
+              <button class="btn ghost" type="button" id="backBtn">${t('back')}</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('backBtn').onclick = () => navTo('send/3');
+        document.getElementById('cancelBtn').onclick = () => { sessionStorage.removeItem('sendFlow'); navTo('home'); };
+        document.getElementById('sendBtn').onclick = async () => {
+          try{
+            const res = await fetch('/transfers/send', {
+              method:'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify({
+                senderId: freelancer.id,
+                recipient: state.recipient,
+                amount: state.amount,
+                reason: state.reason
+              })
+            });
+            const j = await res.json();
+            if (j.needs_bank_details) {
+              alert('External recipient. Bank details required (backend ready).');
               return;
             }
+            if (!res.ok || !j.success) throw new Error(j.error || 'Transfer failed');
+            sessionStorage.setItem('sendReceipt', JSON.stringify(j.transfer));
+            sessionStorage.removeItem('sendFlow');
+            navTo('send/5');
+          } catch (err){
+            alert(err.message);
           }
-        }
+        };
+        return;
+      }
 
-        if (has_wallet) {
-          markProfileSetupDone(freelancer.id);
-          showChat();
-        } else {
-          showProfileSetup();
-        }
-      } catch (err) {
-        console.error('Profile check failed, continuing to chat:', err);
-        showChat();
+      if (step === '5') {
+        const receipt = JSON.parse(sessionStorage.getItem('sendReceipt') || '{}');
+        host.innerHTML = `
+          <div class="screen">
+            <div class="center">
+              <div class="check">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+              </div>
+              <div style="font-weight:1000;font-size:20px">${t('moneySent')}</div>
+              <div class="muted" style="margin-top:6px">Ref: ${escapeHtml(receipt.provider_reference || receipt.id || '—')}</div>
+              <div class="pillRow">
+                <button class="pill" id="shareBtn" type="button">Share receipt</button>
+                <button class="pill" id="homeBtn" type="button">Back to home</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('homeBtn').onclick = () => navTo('home');
+        document.getElementById('shareBtn').onclick = async () => {
+          const text = `Payo Transfer\\nAmount: ${formatMoneyNGN(receipt.amount || 0)}\\nTo: ${receipt.recipient_phone_or_email || receipt.recipient_id || ''}\\nRef: ${receipt.provider_reference || receipt.id || ''}`;
+          try {
+            await navigator.share({ text });
+          } catch {
+            await navigator.clipboard.writeText(text);
+            alert('Copied receipt');
+          }
+        };
+        return;
       }
     }
 
-    async function saveProfile() {
-      const wallet_address = document.getElementById('walletAddress').value.trim();
-      const phone = document.getElementById('phoneNumber').value.trim();
+    function renderBillFlow(route) {
+      setActiveTab('home');
+      const step = route.split('/')[1] || '1';
+      const state = JSON.parse(sessionStorage.getItem('billFlow') || '{}');
 
-      profileError.style.display = 'none';
-      saveProfileBtn.disabled = true;
-
-      try {
-        const res = await fetch('/profile', {
-          method: 'POST',
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            wallet_address: wallet_address || null,
-            phone: phone || null,
-            email: freelancer.email,
-            name: freelancer.name,
-          }),
-        });
-
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          throw new Error('Profile API returned invalid response');
-        }
-
-        const data = await res.json();
-        if (res.status === 401) {
-          showAuth();
-          return;
-        }
-        if (!res.ok) throw new Error(data.error || 'Failed to save profile');
-
-        userProfile = data.profile;
-        markProfileSetupDone(freelancer.id);
-        showChat();
-      } catch (err) {
-        console.error('Profile save failed, continuing to chat:', err);
-        markProfileSetupDone(freelancer.id);
-        showChat();
-      } finally {
-        saveProfileBtn.disabled = false;
+      if (step === '1') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('sendBill')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('whoOwes')}</div>
+              <input class="input" id="nameInput" placeholder="Name" value="${state.name || ''}">
+              <div style="height:10px"></div>
+              <input class="input" id="contactInput" placeholder="WhatsApp number or email" value="${state.contact || ''}">
+              <div class="row" style="margin-top:12px">
+                <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="nextBtn">Next</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('backBtn').onclick = () => navTo('home');
+        document.getElementById('nextBtn').onclick = () => {
+          state.name = document.getElementById('nameInput').value.trim();
+          state.contact = document.getElementById('contactInput').value.trim();
+          if (!state.name || !state.contact) return alert(t('error'));
+          sessionStorage.setItem('billFlow', JSON.stringify(state));
+          navTo('bill/2');
+        };
+        return;
       }
+
+      if (step === '2') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('sendBill')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('howMuch')}</div>
+              <div class="row">
+                <select id="curSel" class="input" style="max-width:110px;padding:12px">
+                  <option value="NGN">₦ NGN</option>
+                  <option value="USD">$ USD</option>
+                </select>
+                <input class="input" id="amtInput" inputmode="numeric" placeholder="0" value="${state.amount || ''}">
+              </div>
+              <div class="muted" style="font-size:12px;margin-top:10px">${t('whatDidYouDo')}</div>
+              <input class="input" id="descInput" placeholder="${t('whatDidYouDo')}" value="${state.desc || ''}">
+              <div class="row" style="margin-top:12px">
+                <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="sendBillBtn">Send Bill</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('backBtn').onclick = () => navTo('bill/1');
+        document.getElementById('sendBillBtn').onclick = async () => {
+          try{
+            const currency = document.getElementById('curSel').value;
+            const amt = Number(String(document.getElementById('amtInput').value).replace(/[^\\d.]/g,''));
+            const desc = document.getElementById('descInput').value.trim();
+            if (!Number.isFinite(amt) || amt <= 0 || !desc) return alert(t('error'));
+            const contact = state.contact;
+            const isEmail = /@/.test(contact);
+
+            const payload = {
+              freelancer_id: freelancer.id,
+              freelancer_email: freelancer.email,
+              freelancer_name: freelancer.name,
+              client_name: state.name,
+              client_email: isEmail ? contact : null,
+              client_phone: !isEmail ? contact : null,
+              project_description: desc,
+              amount: amt,
+              due_date: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
+              currency
+            };
+            const res = await fetch('/invoices/create', { method:'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+            const j = await res.json();
+            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to send bill');
+            sessionStorage.removeItem('billFlow');
+            navTo('bill/3');
+          } catch (err){ alert(err.message); }
+        };
+        return;
+      }
+
+      host.innerHTML = `
+        <div class="screen">
+          <div class="center">
+            <div class="check">
+              <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+            </div>
+            <div style="font-weight:1000;font-size:18px">${t('billSent')}</div>
+            <div class="pillRow">
+              <button class="pill" type="button" onclick="location.hash='home'">Back to home</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCollectFlow() {
+      setActiveTab('home');
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">${t('collectMoney')}</div>
+          <div class="card" style="padding:14px">
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Who you wan collect money from?</div>
+            <input class="input" id="whoInput" placeholder="Phone or email">
+            <div style="height:10px"></div>
+            <input class="input" id="amtInput" inputmode="numeric" placeholder="₦0">
+            <div class="row" style="margin-top:12px">
+              <button class="btn secondary" type="button" onclick="location.hash='home'">${t('back')}</button>
+              <div class="spacer"></div>
+              <button class="btn" type="button" id="reqBtn">Send Request</button>
+            </div>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:10px">Request flow UI only (backend coming soon)</div>
+        </div>
+      `;
+      document.getElementById('reqBtn').onclick = () => alert('Request sent (stub)');
+    }
+
+    function renderGlobalFlow() {
+      setActiveTab('home');
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">${t('globalPayment')}</div>
+          <div class="card" style="padding:14px">
+            <div class="muted" style="font-size:12px;margin-bottom:8px">For clients wey dey outside Nigeria</div>
+            <input class="input" id="cname" placeholder="Client name">
+            <div style="height:10px"></div>
+            <input class="input" id="cemail" placeholder="Client email">
+            <div style="height:10px"></div>
+            <div class="row">
+              <div class="input" style="max-width:110px;display:flex;align-items:center;justify-content:center;padding:12px">$ USD</div>
+              <input class="input" id="amt" inputmode="numeric" placeholder="0">
+            </div>
+            <div style="height:10px"></div>
+            <input class="input" id="desc" placeholder="Description">
+            <div class="row" style="margin-top:12px">
+              <button class="btn secondary" type="button" onclick="location.hash='home'">${t('back')}</button>
+              <div class="spacer"></div>
+              <button class="btn" type="button" id="genBtn">Generate Payment Link</button>
+            </div>
+          </div>
+          <div id="globalResult" class="hidden card" style="padding:14px;margin-top:12px"></div>
+        </div>
+      `;
+      document.getElementById('genBtn').onclick = async () => {
+        try{
+          const payload = {
+            freelancer_id: freelancer.id,
+            freelancer_email: freelancer.email,
+            freelancer_name: freelancer.name,
+            client_name: document.getElementById('cname').value.trim(),
+            client_email: document.getElementById('cemail').value.trim(),
+            project_description: document.getElementById('desc').value.trim(),
+            amount: Number(String(document.getElementById('amt').value).replace(/[^\\d.]/g,'')),
+            due_date: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
+            currency: 'USD'
+          };
+          const res = await fetch('/invoices/create', { method:'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed');
+          const box = document.getElementById('globalResult');
+          box.classList.remove('hidden');
+          box.innerHTML = `
+            <div style="font-weight:1000">Payment link</div>
+            <div class="muted" style="font-size:12px;margin-top:6px">Copy and share</div>
+            <div class="row" style="margin-top:10px">
+              <input class="input" id="plink" readonly value="${escapeAttr(j.payment_url || '')}">
+            </div>
+            <div class="pillRow">
+              <button class="pill" type="button" id="copyBtn">Copy</button>
+              <button class="pill" type="button" id="waBtn">Share WhatsApp</button>
+            </div>
+          `;
+          document.getElementById('copyBtn').onclick = async () => {
+            await navigator.clipboard.writeText(j.payment_url || '');
+            alert('Copied');
+          };
+          document.getElementById('waBtn').onclick = () => {
+            const url = `https://wa.me/?text=${encodeURIComponent('Pay here: ' + (j.payment_url || ''))}`;
+            window.open(url, '_blank');
+          };
+        } catch(err){ alert(err.message); }
+      };
+    }
+
+    function renderTrack() {
+      setActiveTab('track');
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">Track Payments</div>
+          <div class="row" style="gap:8px;margin-bottom:10px">
+            <button class="pill" data-filter="all" type="button">All</button>
+            <button class="pill" data-filter="pending" type="button">Pending</button>
+            <button class="pill" data-filter="paid" type="button">Paid</button>
+            <button class="pill" data-filter="transfers" type="button">Transfers</button>
+          </div>
+          <div class="list" id="trackList">
+            <div class="item"><div class="meta"><div class="name">${t('loading')}</div><div class="sub muted">...</div></div></div>
+          </div>
+        </div>
+      `;
+      let filter = 'all';
+      host.querySelectorAll('[data-filter]').forEach((b) => {
+        b.onclick = () => { filter = b.dataset.filter; load(); };
+      });
+      async function load() {
+        const list = document.getElementById('trackList');
+        list.innerHTML = `<div class="item"><div class="meta"><div class="name">${t('loading')}</div><div class="sub muted">...</div></div></div>`;
+        try{
+          const invRes = await fetch(`/invoices/${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache:'no-store' });
+          const invJson = await invRes.json().catch(() => ({}));
+          const invoices = invRes.ok ? (invJson.invoices || []) : [];
+          const trRes = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache:'no-store' });
+          const trJson = await trRes.json().catch(() => ({}));
+          const transfers = trRes.ok ? (trJson.transfers || []) : [];
+
+          const rows = [];
+          if (filter !== 'transfers') {
+            for (const inv of invoices) {
+              if (filter === 'paid' && inv.status !== 'paid') continue;
+              if (filter === 'pending' && inv.status === 'paid') continue;
+              rows.push({
+                kind:'invoice',
+                name: inv.client_name || inv.client_email || inv.client_phone || 'Invoice',
+                amount: Number(inv.amount || 0),
+                status: inv.status || 'pending',
+                date: inv.created_at || inv.updated_at || new Date().toISOString()
+              });
+            }
+          }
+          if (filter === 'all' || filter === 'transfers') {
+            for (const tr of transfers) {
+              rows.push({
+                kind:'transfer',
+                name: tr.recipient_phone_or_email || tr.recipient_id || 'Transfer',
+                amount: Number(tr.amount || 0),
+                status:'transfer',
+                date: tr.created_at || new Date().toISOString()
+              });
+            }
+          }
+          rows.sort((a,b) => new Date(b.date) - new Date(a.date));
+          if (!rows.length) {
+            list.innerHTML = `<div class="item"><div class="meta"><div class="name">No records</div><div class="sub muted">Try another filter</div></div></div>`;
+            return;
+          }
+          list.innerHTML = rows.slice(0, 50).map(r => {
+            const who = r.name;
+            const ini = initials(who);
+            const badgeText = r.kind === 'transfer' ? 'TR' : ini;
+            let cls = 'warn', label = t('pending');
+            if (r.kind === 'transfer') { cls='out'; label='Transfer'; }
+            else if (String(r.status).toLowerCase()==='paid') { cls='ok'; label=t('paid'); }
+            return `
+              <div class="item">
+                <div class="badge">${escapeHtml(badgeText)}</div>
+                <div class="meta">
+                  <div class="name">${escapeHtml(who)}</div>
+                  <div class="sub">${escapeHtml(label)} • ${new Date(r.date).toLocaleDateString()}</div>
+                </div>
+                <div class="amt ${cls}">${(r.kind==='transfer' ? '-' : '')}${formatMoneyNGN(r.amount)}</div>
+              </div>
+            `;
+          }).join('');
+        } catch(err) {
+          list.innerHTML = `<div class="item"><div class="meta"><div class="name">${t('error')}</div><div class="sub muted">${escapeHtml(err.message)}</div></div></div>`;
+        }
+      }
+      load();
+    }
+
+    function renderChat() {
+      setActiveTab('chat');
+      host.innerHTML = `
+        <div class="chatWrap">
+          <div class="topbar" style="position:sticky;top:0">
+            <button class="iconbtn" type="button" id="backHome">←</button>
+            <div style="font-weight:900">Payo AI</div>
+            <div class="spacer"></div>
+            <button class="iconbtn" type="button" id="signOutBtn">Log out</button>
+          </div>
+          <div class="chatBody" id="chatBody">
+            <div class="bubble received">Hi! I'm Payo. Tell me who to invoice — client name, email/phone, amount, due date, and what the work was for.<div class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div>
+          </div>
+          <div class="chatFoot">
+            <textarea class="input" id="chatInput" rows="1" placeholder="Message Payo..."></textarea>
+            <button class="btn" style="padding:12px 14px" id="chatSend">Send</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('backHome').onclick = () => navTo('home');
+      document.getElementById('signOutBtn').onclick = async () => { if (window.Clerk) await window.Clerk.signOut(); };
+
+      const chatBody = document.getElementById('chatBody');
+      const chatInput = document.getElementById('chatInput');
+      const chatSend = document.getElementById('chatSend');
+
+      chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+      });
+      chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      });
+      chatSend.onclick = send;
+
+      function addBubble(text, type) {
+        const b = document.createElement('div');
+        b.className = 'bubble ' + (type === 'sent' ? 'sent' : 'received');
+        b.innerHTML = `${escapeHtml(text)}<div class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>`;
+        chatBody.appendChild(b);
+        chatBody.scrollTop = chatBody.scrollHeight;
+      }
+
+      async function send() {
+        const text = chatInput.value.trim();
+        if (!text || chatLoading) return;
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+        addBubble(text, 'sent');
+        chatLoading = true;
+        chatSend.disabled = true;
+        try{
+          const res = await fetch('/chat', {
+            method:'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+              message: text,
+              messages,
+              freelancer_id: freelancer.id,
+              freelancer_email: freelancer.email,
+              freelancer_name: freelancer.name,
+            })
+          });
+          const j = await res.json();
+          if (!res.ok) throw new Error(j.error || 'Chat failed');
+          messages = j.messages || messages;
+          addBubble(j.reply || 'Done', 'received');
+        } catch(err) {
+          addBubble(`${t('error')}: ${err.message}`, 'received');
+        } finally {
+          chatLoading = false;
+          chatSend.disabled = false;
+        }
+      }
+    }
+
+    function renderSettings() {
+      setActiveTab('settings');
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">${t('Settings') || 'Settings'}</div>
+          <div class="card" style="padding:14px">
+            <div class="row">
+              <div class="col" style="gap:2px">
+                <div style="font-weight:900">Language</div>
+                <div class="muted" style="font-size:12px">EN ←→ PID</div>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn secondary" type="button" id="toggleBtn">${getLang().toUpperCase()}</button>
+            </div>
+            <div style="height:12px"></div>
+            <button class="btn secondary" type="button" id="logoutBtn">Log out</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('toggleBtn').onclick = () => langToggle.click();
+      document.getElementById('logoutBtn').onclick = async () => { if (window.Clerk) await window.Clerk.signOut(); };
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = String(text ?? '');
+      return div.innerHTML.replace(/\\n/g, '<br>');
+    }
+    function escapeAttr(text) {
+      return String(text ?? '').replace(/\"/g, '&quot;');
     }
 
     function mountClerkAuth() {
       if (!window.Clerk || clerkSignInMounted) return;
-
       clerkAuthEl.innerHTML = `
         <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
-          <button type="button" id="showSignIn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#00a884;color:#fff;cursor:pointer;font-size:14px;">Sign in</button>
-          <button type="button" id="showSignUp" style="flex:1;padding:10px;border-radius:8px;border:1px solid #2a3942;background:#1f2c34;color:#e9edef;cursor:pointer;font-size:14px;">Sign up</button>
+          <button type="button" id="showSignIn" style="flex:1;padding:10px;border-radius:14px;border:none;background:#00a884;color:#fff;cursor:pointer;font-size:14px;font-weight:800;">Sign in</button>
+          <button type="button" id="showSignUp" style="flex:1;padding:10px;border-radius:14px;border:1px solid #2a3942;background:#1f2c34;color:#e9edef;cursor:pointer;font-size:14px;font-weight:800;">Sign up</button>
         </div>
         <div id="clerk-sign-in"></div>
         <div id="clerk-sign-up" style="display:none;"></div>
@@ -747,74 +1331,9 @@
       });
     }
 
-    function appendBubble(text, type) {
-      const bubble = document.createElement('div');
-      bubble.className = `bubble ${type}`;
-      bubble.innerHTML = `${escapeHtml(text)}<div class="time">${formatTime(new Date())}</div>`;
-      chat.insertBefore(bubble, typing);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML.replace(/\n/g, '<br>');
-    }
-
-    function setLoading(on) {
-      loading = on;
-      sendBtn.disabled = on;
-      typing.style.display = on ? 'block' : 'none';
-      if (on) chat.scrollTop = chat.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text || loading || !freelancer) return;
-
-      input.value = '';
-      input.style.height = 'auto';
-      appendBubble(text, 'sent');
-
-      setLoading(true);
-
-      try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            message: text,
-            messages,
-            freelancer_id: freelancer.id,
-            freelancer_email: freelancer.email,
-            freelancer_name: freelancer.name,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (res.status === 401) {
-          showAuth();
-          throw new Error('Session expired. Please sign in again.');
-        }
-
-        if (!res.ok) throw new Error(data.error || 'Something went wrong');
-
-        messages = data.messages || messages;
-        appendBubble(data.reply, 'received');
-      } catch (err) {
-        appendBubble(`Sorry, something went wrong: ${err.message}`, 'received');
-      } finally {
-        setLoading(false);
-      }
-    }
-
     async function loadClerkScript(publishableKey) {
       return new Promise((resolve, reject) => {
-        if (window.Clerk) {
-          resolve();
-          return;
-        }
+        if (window.Clerk) return resolve();
         const script = document.createElement('script');
         script.async = true;
         script.crossOrigin = 'anonymous';
@@ -827,32 +1346,40 @@
     }
 
     async function init() {
+      langToggle.textContent = getLang().toUpperCase();
       try {
         const configRes = await fetch('/config');
         const { clerkPublishableKey } = await configRes.json();
-
         if (!clerkPublishableKey) {
           authLoading.textContent = 'Clerk is not configured. Add CLERK_PUBLISHABLE_KEY to .env';
           return;
         }
-
         await loadClerkScript(clerkPublishableKey);
         await window.Clerk.load();
-
         authLoading.style.display = 'none';
 
-        window.Clerk.addListener(({ user }) => {
-          if (user) {
-            routeAfterLogin();
-          } else {
-            showAuth();
+        window.Clerk.addListener(async ({ user }) => {
+          if (!user) {
+            authScreen.classList.remove('hidden');
+            appEl.classList.add('hidden');
+            mountClerkAuth();
+            return;
           }
+          freelancer = getFreelancerFromClerk();
+          avatarEl.textContent = initials(freelancer.name);
+          authScreen.classList.add('hidden');
+          appEl.classList.remove('hidden');
+          render();
         });
 
         if (window.Clerk.user) {
-          routeAfterLogin();
+          freelancer = getFreelancerFromClerk();
+          avatarEl.textContent = initials(freelancer.name);
+          authScreen.classList.add('hidden');
+          appEl.classList.remove('hidden');
+          render();
         } else {
-          showAuth();
+          mountClerkAuth();
         }
       } catch (err) {
         authLoading.textContent = `Failed to initialize: ${err.message}`;

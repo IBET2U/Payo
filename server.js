@@ -9,6 +9,7 @@ const nowpaymentsWebhookRoutes = require('./routes/nowpaymentsWebhook');
 const chatRoutes = require('./routes/chatRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const ussdRoutes = require('./routes/ussdRoutes');
+const transferRoutes = require('./routes/transferRoutes');
 require('./followUp');
 
 const app = express();
@@ -32,6 +33,7 @@ function isApiRoute(path) {
     path.startsWith('/invoices') ||
     path.startsWith('/chat') ||
     path.startsWith('/profile') ||
+    path.startsWith('/transfers') ||
     path === '/health' ||
     path === '/config' ||
     path.startsWith('/webhooks') ||
@@ -59,6 +61,7 @@ app.use('/webhooks/paystack', webhookRoutes);
 app.use('/webhooks/nowpayments', nowpaymentsWebhookRoutes);
 app.use('/chat', clerkRequireAuth, chatRoutes);
 app.use('/profile', clerkRequireAuth, profileRoutes);
+app.use('/transfers', clerkRequireAuth, transferRoutes);
 app.use('/ussd', ussdRoutes);
 
 // Static files only for non-API paths (never intercept /profile, /chat, etc.)
