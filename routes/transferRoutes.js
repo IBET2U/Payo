@@ -6,6 +6,7 @@ const {
   initiateTransfer,
   getTransferHistory,
 } = require('../services/transferService');
+const { updateUserEarnings } = require('../services/earningsService');
 
 router.post('/resolve', async (req, res) => {
   try {
@@ -51,6 +52,22 @@ router.post('/send', async (req, res) => {
       bankCode,
       name,
     });
+
+    if (result.transfer?.recipient_type === 'payo' && result.transfer?.recipient_id) {
+      try {
+        const earningsResult = await updateUserEarnings(
+          result.transfer.recipient_id,
+          amount,
+          'NGN',
+          { isNetworkTransaction: true }
+        );
+        console.log(
+          `[Transfer] Network earnings updated for ${result.transfer.recipient_id} — tier ${earningsResult.tier}, +₦${earningsResult.earningsThisTransaction}`
+        );
+      } catch (earningsErr) {
+        console.error('[Transfer] Earnings update failed:', earningsErr.message);
+      }
+    }
 
     return res.json({ success: true, ...result });
   } catch (err) {

@@ -4,6 +4,7 @@ const supabase = require('./supabase');
 const { generateFollowUp } = require('./claude');
 const { sendFollowUpEmail } = require('./mailer');
 const { sendFollowUpWhatsApp } = require('./whatsapp');
+const { monthlyReset } = require('./services/earningsService');
 
 const TIMEZONE = process.env.TZ || 'Africa/Lagos';
 
@@ -169,11 +170,25 @@ cron.schedule('0 9 * * *', processUnpaidInvoices, {
   timezone: TIMEZONE,
 });
 
+cron.schedule(
+  '0 9 1 * *',
+  async () => {
+    try {
+      await monthlyReset();
+    } catch (err) {
+      console.error('[Payo Earnings] Monthly reset cron failed:', err.message);
+    }
+  },
+  { timezone: TIMEZONE }
+);
+
 console.log(`[Payo Follow-up] Scheduled daily at 9:00 AM (${TIMEZONE})`);
+console.log(`[Payo Earnings] Monthly reset scheduled on 1st of each month at 9:00 AM (${TIMEZONE})`);
 
 module.exports = {
   processUnpaidInvoices,
   getDaysPastDue,
   getFollowUpConfig,
   wasFollowUpSentToday,
+  monthlyReset,
 };

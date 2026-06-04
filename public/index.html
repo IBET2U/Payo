@@ -195,8 +195,129 @@
     }
     .miniBtn:hover{filter:brightness(1.05)}
 
-    .grid{
+    /* Earnings tier bar */
+    .earningsCard{
       margin-top:14px;
+      padding:14px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+    }
+    .earningsTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .earningsTop .label{font-size:12px;color:var(--muted);font-weight:700}
+    .tierBadge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.4px;
+      border:1px solid rgba(255,255,255,.12);
+      color:#111;
+    }
+    .tierBadge .dot{width:8px;height:8px;border-radius:50%}
+    .earningsAmt{font-size:15px;font-weight:900;margin-bottom:10px}
+    .earningsAmt span{color:var(--primary)}
+    .progressTrack{
+      height:8px;
+      border-radius:999px;
+      background:#121f27;
+      border:1px solid var(--border);
+      overflow:hidden;
+      margin-bottom:10px;
+    }
+    .progressFill{
+      height:100%;
+      border-radius:999px;
+      width:0%;
+      transition:width .5s ease;
+    }
+    .earningsHint{
+      font-size:12px;
+      line-height:1.4;
+      color:var(--text);
+      font-weight:600;
+    }
+    .earningsHint strong{color:var(--primary)}
+    .earningsFoot{
+      margin-top:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .earningsInfo{font-size:11px;color:var(--muted)}
+    .shareTierBtn{
+      border:1px solid var(--border);
+      background:#14222a;
+      color:var(--text);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+    .shareTierBtn:hover{border-color:#3b4a53}
+
+    /* Tier celebration */
+    .tierCelebration{
+      position:fixed;
+      inset:0;
+      z-index:100;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(11,20,26,.88);
+      backdrop-filter:blur(6px);
+      animation:fadeIn .25s ease;
+    }
+    .tierCelebration canvas{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+    }
+    .tierCelebrationInner{
+      position:relative;
+      z-index:2;
+      text-align:center;
+      padding:24px 20px;
+      max-width:320px;
+    }
+    .tierCelebrationInner h2{
+      font-size:26px;
+      font-weight:1000;
+      margin-bottom:10px;
+      line-height:1.2;
+    }
+    .tierCelebrationInner p{
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+    @keyframes fadeIn{
+      from{opacity:0}
+      to{opacity:1}
+    }
+
+    .actionGrid{
+      margin-top:14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .actionGridRow{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:10px;
@@ -214,6 +335,84 @@
     .action .emoji{font-size:22px}
     .action .title{margin-top:8px;font-weight:800}
     .action .sub{margin-top:2px;font-size:12px;color:var(--muted)}
+    .action.quickLink{
+      background:linear-gradient(135deg,#18f1c1,#00a884 55%,#007c62);
+      border:1px solid rgba(0,168,132,.5);
+      box-shadow:0 8px 24px rgba(0,168,132,.2);
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-height:72px;
+      padding:16px 14px;
+    }
+    .action.quickLink .emoji{font-size:28px;margin:0}
+    .action.quickLink .quickLinkText{flex:1;text-align:left}
+    .action.quickLink .title{margin-top:0;color:#06221a}
+    .action.quickLink .sub{color:rgba(6,34,26,.78)}
+
+    .curToggle{
+      display:flex;
+      gap:8px;
+      margin-bottom:14px;
+    }
+    .curToggle button{
+      flex:1;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#14222a;
+      color:var(--muted);
+      font-weight:800;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+    .curToggle button.active{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+    .quickAmountInput{
+      font-size:38px;
+      font-weight:900;
+      text-align:center;
+      letter-spacing:-.5px;
+      padding:18px 14px;
+    }
+    .linkUrlBox{
+      word-break:break-all;
+      font-size:13px;
+      line-height:1.45;
+      padding:14px;
+      background:#121f27;
+      border:1px solid var(--border);
+      border-radius:14px;
+      margin:12px 0;
+    }
+    .btn.copyLarge{
+      width:100%;
+      padding:16px;
+      font-size:16px;
+      margin-bottom:10px;
+    }
+    .btn.waShare{
+      width:100%;
+      padding:16px;
+      font-size:16px;
+      background:linear-gradient(135deg,#25d366,#128c7e);
+      color:#fff;
+      border:none;
+      font-weight:800;
+    }
+    .btn.waShare:hover{filter:brightness(1.05)}
+    .createAnother{
+      display:block;
+      text-align:center;
+      margin-top:16px;
+      color:var(--primary);
+      font-weight:700;
+      cursor:pointer;
+      font-size:14px;
+    }
 
     .sectionTitle{margin-top:18px;margin-bottom:10px;font-size:14px;font-weight:900;letter-spacing:.2px}
     .list{display:flex;flex-direction:column;gap:10px}
@@ -366,6 +565,14 @@
 
       <button class="aiFab" id="aiFab" type="button" aria-label="Open AI chat"><span>P</span></button>
     </div>
+
+    <div id="tierCelebration" class="tierCelebration hidden" aria-hidden="true">
+      <canvas id="confettiCanvas"></canvas>
+      <div class="tierCelebrationInner">
+        <h2 id="tierCelebrationTitle"></h2>
+        <p id="tierCelebrationSub"></p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -376,11 +583,24 @@
         sendBill: "Send Bill",
         collectMoney: "Request Money",
         globalPayment: "Get Paid Globally",
+        quickLink: "Quick Link",
+        quickLinkSub: "Get a payment link in seconds",
+        wetinEFor: "What is it for? (optional)",
+        generateLink: "Generate Link",
+        linkReady: "Your payment link is ready",
+        copyLink: "COPY LINK",
+        shareOnWhatsApp: "Share on WhatsApp",
+        createAnother: "Create another",
         balance: "Your Payo Balance",
         pending: "Pending",
         paid: "Paid",
         billSent: "Bill sent! I'll follow up automatically 💚",
         moneySent: "Money sent successfully! 🎉",
+        requestSent: "Request sent! I'll follow up if they don't pay 💚",
+        bankDetails: "Bank details",
+        selectBank: "Select bank",
+        accountNumber: "Account number",
+        accountName: "Account name",
         whoOwes: "Who owes you money?",
         howMuch: "How much?",
         whatDidYouDo: "What did you do for them?",
@@ -403,11 +623,24 @@
         sendBill: "Send Bill",
         collectMoney: "Collect Money",
         globalPayment: "International Payment",
+        quickLink: "Quick Link",
+        quickLinkSub: "Collect money sharp sharp — no full invoice",
+        wetinEFor: "Wetin e for? (optional)",
+        generateLink: "Generate Link",
+        linkReady: "Your payment link don ready",
+        copyLink: "COPY LINK",
+        shareOnWhatsApp: "Share on WhatsApp",
+        createAnother: "Create another",
         balance: "Your Payo Money",
         pending: "Still dey wait",
         paid: "E don pay",
         billSent: "Bill don go! I go dey chase dem if dem no pay 💚",
         moneySent: "Omo! Money don go! 🎉",
+        requestSent: "Request don go! I go follow up if dem no pay 💚",
+        bankDetails: "Bank details",
+        selectBank: "Choose bank",
+        accountNumber: "Account number",
+        accountName: "Account name",
         whoOwes: "Who owe you money?",
         howMuch: "How much dem owe you?",
         whatDidYouDo: "Wetin you do for dem?",
@@ -448,6 +681,17 @@
     let messages = [];
     let chatLoading = false;
     let pendingRender = false;
+    let earningsData = null;
+
+    const TIER_COLORS = {
+      BRONZE: '#cd7f32',
+      SILVER: '#c0c0c0',
+      GOLD: '#ffd700',
+      PLATINUM: '#e5e4e2',
+      DIAMOND: '#b9f2ff',
+    };
+    const TIER_ORDER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+    const PAYO_SHARE_URL = 'https://payo-production.up.railway.app';
 
     function getLang() { return localStorage.getItem('payoLang') || 'pid'; }
     function setLang(lang) { localStorage.setItem('payoLang', lang); }
@@ -459,20 +703,235 @@
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     }
 
-    function getCurrencySymbol(currency) {
-      return String(currency || 'NGN').toUpperCase() === 'USD' ? '$' : '₦';
+    function formatAmount(amount, currency) {
+      const symbol = (currency || 'NGN') === 'USD' ? '$' : '₦';
+      return symbol + Number(amount || 0).toLocaleString('en-NG');
     }
 
-    function formatMoney(amount, currency = 'NGN') {
-      const num = Number(amount ?? 0);
-      const symbol = getCurrencySymbol(currency);
-      if (!Number.isFinite(num)) return `${symbol}0.00`;
-      const locale = symbol === '$' ? 'en-US' : 'en-NG';
-      return symbol + num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function formatNgnCompact(amount) {
+      return formatAmount(amount, 'NGN');
     }
 
-    function formatMoneyNGN(n) {
-      return formatMoney(n, 'NGN');
+    function dueDateIn7Days() {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function dueDateIn30Days() {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      return d.toISOString().slice(0, 10);
+    }
+
+    async function postTransferSend(payload) {
+      const token = await window.Clerk.session?.getToken();
+      const res = await fetch('/transfers/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => ({}));
+      return { res, j };
+    }
+
+    async function handleTransferSuccess(j) {
+      sessionStorage.setItem('sendReceipt', JSON.stringify(j.transfer || {}));
+      sessionStorage.removeItem('sendFlow');
+      await refreshEarningsBar({ celebrate: true });
+      navTo('send/5');
+    }
+
+    function tierIndex(tier) {
+      const i = TIER_ORDER.indexOf(String(tier || 'BRONZE').toUpperCase());
+      return i >= 0 ? i : 0;
+    }
+
+    function getStoredTier() {
+      return localStorage.getItem('payoLastTier') || null;
+    }
+
+    function setStoredTier(tier) {
+      localStorage.setItem('payoLastTier', tier);
+    }
+
+    async function fetchEarningsProgress() {
+      const res = await fetch('/earnings/progress', {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+      });
+      if (res.status === 401) throw new Error('Unauthenticated');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load earnings');
+      return data;
+    }
+
+    function buildEarningsHint(progress) {
+      if (!progress) return 'Loading tier progress...';
+      const next = progress.nextTier;
+      const rate = progress.nextEarningsRatePercent;
+      if (!next) {
+        const currentRate = progress.currentEarningsRatePercent ?? 1;
+        return `You've reached the top tier — earn <strong>${currentRate}%</strong> back on every transaction`;
+      }
+      const needed = formatNgnCompact(progress.amountNeeded);
+      return `Process <strong>${needed}</strong> more to reach <strong>${next}</strong> — earn <strong>${rate}%</strong> back`;
+    }
+
+    function renderEarningsBarDOM(progress, profile) {
+      const card = document.getElementById('earningsCard');
+      if (!card) return;
+
+      const tier = (progress?.currentTier || profile?.tier || 'BRONZE').toUpperCase();
+      const color = TIER_COLORS[tier] || TIER_COLORS.BRONZE;
+      const monthlyEarnings = Number(progress?.monthlyEarnings ?? profile?.monthly_earnings ?? 0);
+      const pct = Math.min(100, Math.max(0, Number(progress?.percentageProgress ?? 0)));
+
+      const badge = document.getElementById('tierBadge');
+      if (badge) {
+        badge.style.background = color;
+        badge.style.color = tier === 'PLATINUM' || tier === 'DIAMOND' ? '#111' : '#111';
+        badge.innerHTML = `<span class="dot" style="background:${tier === 'PLATINUM' ? '#888' : '#111'}"></span>${tier}`;
+      }
+
+      const earnedEl = document.getElementById('earningsCounter');
+      if (earnedEl) {
+        earnedEl.innerHTML = `<span>${formatNgnCompact(monthlyEarnings)}</span> earned this month`;
+      }
+
+      const fill = document.getElementById('earningsProgressFill');
+      if (fill) {
+        fill.style.width = pct + '%';
+        fill.style.background = `linear-gradient(90deg, ${color}, var(--primary))`;
+      }
+
+      const hint = document.getElementById('earningsHint');
+      if (hint) hint.innerHTML = buildEarningsHint(progress);
+    }
+
+    let confettiAnimId = null;
+
+    function stopConfetti() {
+      if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+      confettiAnimId = null;
+    }
+
+    function runConfetti(color) {
+      const overlay = document.getElementById('tierCelebration');
+      const canvas = document.getElementById('confettiCanvas');
+      if (!overlay || !canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = Array.from({ length: 120 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: 4 + Math.random() * 6,
+        vx: -2 + Math.random() * 4,
+        vy: 2 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        vr: -0.15 + Math.random() * 0.3,
+      }));
+
+      const start = performance.now();
+      stopConfetti();
+
+      function frame(now) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vr;
+          if (p.y > canvas.height + 20) {
+            p.y = -20;
+            p.x = Math.random() * canvas.width;
+          }
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.85;
+          ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.6);
+          ctx.restore();
+        }
+        if (now - start < 3000) {
+          confettiAnimId = requestAnimationFrame(frame);
+        }
+      }
+      confettiAnimId = requestAnimationFrame(frame);
+    }
+
+    function showTierCelebration(tier, ratePercent) {
+      const overlay = document.getElementById('tierCelebration');
+      const title = document.getElementById('tierCelebrationTitle');
+      const sub = document.getElementById('tierCelebrationSub');
+      if (!overlay || !title || !sub) return;
+
+      const color = TIER_COLORS[tier] || TIER_COLORS.BRONZE;
+      title.textContent = `You just reached ${tier}! 🎉`;
+      title.style.color = color;
+      sub.textContent = `Your earnings rate is now ${ratePercent}% back on every transaction`;
+
+      overlay.classList.remove('hidden');
+      overlay.setAttribute('aria-hidden', 'false');
+      runConfetti(color);
+
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.setAttribute('aria-hidden', 'true');
+        stopConfetti();
+      }, 3000);
+    }
+
+    function maybeCelebrateTierUpgrade(progress) {
+      if (!progress?.currentTier) return;
+      const newTier = progress.currentTier.toUpperCase();
+      const stored = getStoredTier();
+
+      if (!stored) {
+        setStoredTier(newTier);
+        return;
+      }
+
+      if (tierIndex(newTier) > tierIndex(stored)) {
+        showTierCelebration(newTier, progress.currentEarningsRatePercent ?? 0.2);
+      }
+      setStoredTier(newTier);
+    }
+
+    function openTierShareWhatsApp(progress) {
+      const tier = (progress?.currentTier || 'BRONZE').toUpperCase();
+      const rate = progress?.currentEarningsRatePercent ?? 0.2;
+      const text = `I just reached ${tier} status on Payo! I earn ${rate}% back on every naira I process. Join me: ${PAYO_SHARE_URL}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    async function loadAndRenderEarnings(options = {}) {
+      const { celebrate = true } = options;
+      try {
+        const [profile, progress] = await Promise.all([
+          fetchProfile(),
+          fetchEarningsProgress(),
+        ]);
+        earningsData = { profile, progress };
+        renderEarningsBarDOM(progress, profile);
+        if (celebrate) maybeCelebrateTierUpgrade(progress);
+        return earningsData;
+      } catch (err) {
+        console.warn('[Payo] Earnings load failed:', err.message);
+        const hint = document.getElementById('earningsHint');
+        if (hint) hint.textContent = 'Could not load earnings. Pull home to retry.';
+        return null;
+      }
+    }
+
+    async function refreshEarningsBar(options = {}) {
+      return loadAndRenderEarnings({ celebrate: options.celebrate !== false });
     }
 
     function parseAmount(value) {
@@ -602,8 +1061,9 @@
       if (route === 'home') return renderHome();
       if (route.startsWith('send')) return renderSendFlow(route);
       if (route.startsWith('bill')) return renderBillFlow(route);
-      if (route.startsWith('collect')) return renderCollectFlow(route);
+      if (route.startsWith('collect')) return renderCollectFlow(route || 'collect');
       if (route.startsWith('global')) return renderGlobalFlow(route);
+      if (route.startsWith('quick')) return renderQuickLinkFlow(route);
       if (route === 'track') return renderTrack();
       if (route === 'chat') return renderChat();
       if (route === 'settings') return renderSettings();
@@ -663,33 +1123,58 @@
                 <div class="muted" style="font-size:12px">NGN</div>
               </div>
             </div>
-            <div class="balanceAmt" id="balAmt">${formatMoneyNGN(userProfile?.wallet_balance ?? 0)}</div>
+            <div class="balanceAmt" id="balAmt">${formatAmount(userProfile?.wallet_balance ?? 0, 'NGN')}</div>
             <div class="balanceActions">
               <button type="button" class="miniBtn" id="topUpBtn">Top Up</button>
               <button type="button" class="miniBtn" id="withdrawBtn">Withdraw</button>
             </div>
           </div>
 
-          <div class="grid">
-            <div class="action" id="actSend">
-              <div class="emoji">💸</div>
-              <div class="title">${t('sendMoney')}</div>
-              <div class="sub">${getLang()==='pid'?'Send quick to phone/email':'Send to phone/email'}</div>
+          <div class="earningsCard" id="earningsCard">
+            <div class="earningsTop">
+              <div class="label">Earnings tier</div>
+              <div class="tierBadge" id="tierBadge"><span class="dot"></span>BRONZE</div>
             </div>
-            <div class="action" id="actBill">
-              <div class="emoji">📩</div>
-              <div class="title">${t('sendBill')}</div>
-              <div class="sub">${getLang()==='pid'?'Create invoice':'Send invoice'}</div>
+            <div class="earningsAmt" id="earningsCounter"><span>${formatAmount(0, 'NGN')}</span> earned this month</div>
+            <div class="progressTrack">
+              <div class="progressFill" id="earningsProgressFill"></div>
             </div>
-            <div class="action" id="actCollect">
-              <div class="emoji">🤝</div>
-              <div class="title">${t('collectMoney')}</div>
-              <div class="sub">${getLang()==='pid'?'Send request':'Request payment'}</div>
+            <div class="earningsHint" id="earningsHint">Loading tier progress...</div>
+            <div class="earningsFoot">
+              <div class="earningsInfo">Resets on 1st. Credited automatically.</div>
+              <button type="button" class="shareTierBtn" id="shareTierBtn">Share my tier 💚</button>
             </div>
-            <div class="action" id="actGlobal">
-              <div class="emoji">🌍</div>
-              <div class="title">${t('globalPayment')}</div>
-              <div class="sub">${getLang()==='pid'?'For outside Nigeria':'Get paid in USD'}</div>
+          </div>
+
+          <div class="actionGrid">
+            <div class="actionGridRow">
+              <div class="action" id="actSend">
+                <div class="emoji">💸</div>
+                <div class="title">${t('sendMoney')}</div>
+                <div class="sub">${getLang()==='pid'?'Send quick to phone/email':'Send to phone/email'}</div>
+              </div>
+              <div class="action" id="actBill">
+                <div class="emoji">📩</div>
+                <div class="title">${t('sendBill')}</div>
+                <div class="sub">${getLang()==='pid'?'Create invoice':'Send invoice'}</div>
+              </div>
+              <div class="action" id="actCollect">
+                <div class="emoji">🤝</div>
+                <div class="title">${t('collectMoney')}</div>
+                <div class="sub">${getLang()==='pid'?'Send request':'Request payment'}</div>
+              </div>
+              <div class="action" id="actGlobal">
+                <div class="emoji">🌍</div>
+                <div class="title">${t('globalPayment')}</div>
+                <div class="sub">${getLang()==='pid'?'For outside Nigeria':'Get paid in USD'}</div>
+              </div>
+            </div>
+            <div class="action quickLink" id="actQuickLink">
+              <div class="emoji">🔗</div>
+              <div class="quickLinkText">
+                <div class="title">${t('quickLink')}</div>
+                <div class="sub">${t('quickLinkSub')}</div>
+              </div>
             </div>
           </div>
 
@@ -713,6 +1198,7 @@
       document.getElementById('actBill').onclick = () => navTo('bill/1');
       document.getElementById('actCollect').onclick = () => navTo('collect');
       document.getElementById('actGlobal').onclick = () => navTo('global');
+      document.getElementById('actQuickLink').onclick = () => navTo('quick');
       document.getElementById('topUpBtn').onclick = () => alert('Top up coming soon');
       document.getElementById('withdrawBtn').onclick = () => alert('Withdraw coming soon');
 
@@ -723,10 +1209,11 @@
 
       (async () => {
         try {
-          const profile = await fetchProfile();
+          await loadAndRenderEarnings({ celebrate: true });
+          const profile = userProfile || (await fetchProfile());
           const balance = profile?.wallet_balance ?? 0;
           const balEl = document.getElementById('balAmt');
-          if (balEl) balEl.textContent = formatMoneyNGN(balance);
+          if (balEl) balEl.textContent = formatAmount(balance, 'NGN');
           const recent = await fetchRecentActivity();
           const list = document.getElementById('recentList');
           if (!recent.length) {
@@ -757,7 +1244,7 @@
                   <div class="name">${escapeHtml(who)}</div>
                   <div class="sub">${escapeHtml(label)} • ${timeAgo(r.created_at)}</div>
                 </div>
-                <div class="amt ${amtClass}">${amountPrefix}${formatMoney(r.amount, r.currency || 'NGN')}</div>
+                <div class="amt ${amtClass}">${amountPrefix}${formatAmount(r.amount, r.currency || 'NGN')}</div>
               </div>
             `;
           }).join('');
@@ -865,14 +1352,14 @@
             <div class="sectionTitle">${t('sendMoney')}</div>
             <div class="card" style="padding:14px">
               <div class="muted" style="font-size:12px;margin-bottom:8px">${t('howMuch')}</div>
-              <input class="input" id="amtInput" inputmode="numeric" placeholder="₦0" value="${state.amount || ''}">
+              <input class="input" id="amtInput" inputmode="numeric" placeholder="${formatAmount(0, 'NGN')}" value="${state.amount || ''}">
               <div class="muted" style="font-size:12px;margin-top:10px">Wetin be the reason?</div>
               <input class="input" id="reasonInput" placeholder="Optional" value="${state.reason || ''}">
               <div class="pillRow">
-                <button class="pill" type="button" data-q="5000">₦5,000</button>
-                <button class="pill" type="button" data-q="10000">₦10,000</button>
-                <button class="pill" type="button" data-q="20000">₦20,000</button>
-                <button class="pill" type="button" data-q="50000">₦50,000</button>
+                <button class="pill" type="button" data-q="5000">${formatAmount(5000, 'NGN')}</button>
+                <button class="pill" type="button" data-q="10000">${formatAmount(10000, 'NGN')}</button>
+                <button class="pill" type="button" data-q="20000">${formatAmount(20000, 'NGN')}</button>
+                <button class="pill" type="button" data-q="50000">${formatAmount(50000, 'NGN')}</button>
               </div>
               <div class="row" style="margin-top:12px">
                 <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
@@ -907,7 +1394,7 @@
               <div class="muted" style="font-size:12px;margin-top:8px">To</div>
               <div style="font-weight:800">${escapeHtml(state.recipient || '')}</div>
               <div class="muted" style="font-size:12px;margin-top:10px">Amount</div>
-              <div style="font-weight:1000;font-size:22px">${formatMoneyNGN(state.amount || 0)}</div>
+              <div style="font-weight:1000;font-size:22px">${formatAmount(state.amount || 0, 'NGN')}</div>
               <div class="muted" style="font-size:12px;margin-top:10px">Reason</div>
               <div>${escapeHtml(state.reason || '—')}</div>
               <div class="row" style="margin-top:14px">
@@ -922,32 +1409,113 @@
         document.getElementById('backBtn').onclick = () => navTo('send/3');
         document.getElementById('cancelBtn').onclick = () => { sessionStorage.removeItem('sendFlow'); navTo('home'); };
         document.getElementById('sendBtn').onclick = async () => {
-          try{
+          const sendBtn = document.getElementById('sendBtn');
+          try {
             freelancer = getFreelancerFromClerk();
             if (!freelancer?.id) return alert(t('error'));
-            const res = await fetch('/transfers/send', {
-              method:'POST',
-              headers: await getAuthHeaders(),
-              body: JSON.stringify({
-                senderId: freelancer.id,
-                recipient: state.recipient,
-                amount: state.amount,
-                reason: state.reason
-              })
+            sendBtn.disabled = true;
+            const { res, j } = await postTransferSend({
+              senderId: window.Clerk.user.id,
+              recipient: state.recipient,
+              amount: state.amount,
+              reason: state.reason || '',
             });
-            const j = await res.json();
             if (j.needs_bank_details) {
-              alert('External recipient. Bank details required (backend ready).');
+              sessionStorage.setItem('sendFlow', JSON.stringify(state));
+              navTo('send/bank');
               return;
             }
-            if (!res.ok || !j.success) throw new Error(j.error || 'Transfer failed');
-            sessionStorage.setItem('sendReceipt', JSON.stringify(j.transfer));
-            sessionStorage.removeItem('sendFlow');
-            navTo('send/5');
-          } catch (err){
+            if (!res.ok || !j.success) {
+              throw new Error(j.error || j.message || 'Transfer failed');
+            }
+            await handleTransferSuccess(j);
+          } catch (err) {
             alert(err.message || t('error'));
+          } finally {
+            sendBtn.disabled = false;
           }
         };
+        wireFormInputs(host);
+        return;
+      }
+
+      if (step === 'bank') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">${t('bankDetails')}</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('selectBank')}</div>
+              <select class="input" id="bankSelect" style="padding:12px">
+                <option value="">${t('loading')}</option>
+              </select>
+              <div style="height:10px"></div>
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('accountNumber')}</div>
+              <input class="input" id="acctInput" inputmode="numeric" placeholder="${t('accountNumber')}" value="${state.accountNumber || ''}">
+              <div style="height:10px"></div>
+              <div class="muted" style="font-size:12px;margin-bottom:8px">${t('accountName')}</div>
+              <input class="input" id="bankNameInput" placeholder="${t('accountName')}" value="${state.bankAccountName || ''}">
+              <div class="row" style="margin-top:12px">
+                <button class="btn secondary" type="button" id="backBtn">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="bankSendBtn">${t('confirm')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('backBtn').onclick = () => navTo('send/4');
+        document.getElementById('bankSendBtn').onclick = async () => {
+          const bankSendBtn = document.getElementById('bankSendBtn');
+          try {
+            freelancer = getFreelancerFromClerk();
+            if (!freelancer?.id) return alert(t('error'));
+            const bankCode = document.getElementById('bankSelect').value;
+            const accountNumber = document.getElementById('acctInput').value.trim();
+            const name = document.getElementById('bankNameInput').value.trim();
+            if (!bankCode || !accountNumber || !name) return alert(t('error'));
+            bankSendBtn.disabled = true;
+            const { res, j } = await postTransferSend({
+              senderId: window.Clerk.user.id,
+              recipient: state.recipient,
+              amount: state.amount,
+              reason: state.reason || '',
+              accountNumber,
+              bankCode,
+              name,
+            });
+            if (j.needs_bank_details) {
+              throw new Error(j.message || j.error || 'Bank details still required');
+            }
+            if (!res.ok || !j.success) {
+              throw new Error(j.error || j.message || 'Transfer failed');
+            }
+            await handleTransferSuccess(j);
+          } catch (err) {
+            alert(err.message || t('error'));
+          } finally {
+            bankSendBtn.disabled = false;
+          }
+        };
+        (async () => {
+          const sel = document.getElementById('bankSelect');
+          try {
+            const token = await window.Clerk.session?.getToken();
+            const res = await fetch('/banks', {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: 'no-store',
+            });
+            const j = await res.json();
+            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to load banks');
+            const banks = j.banks || [];
+            sel.innerHTML =
+              '<option value="">Select bank</option>' +
+              banks
+                .map((b) => `<option value="${escapeAttr(b.code)}">${escapeHtml(b.name)}</option>`)
+                .join('');
+            if (state.bankCode) sel.value = state.bankCode;
+          } catch (err) {
+            sel.innerHTML = `<option value="">${escapeHtml(err.message)}</option>`;
+          }
+        })();
         wireFormInputs(host);
         return;
       }
@@ -969,9 +1537,12 @@
             </div>
           </div>
         `;
-        document.getElementById('homeBtn').onclick = () => navTo('home');
+        document.getElementById('homeBtn').onclick = async () => {
+          await refreshEarningsBar({ celebrate: true });
+          navTo('home');
+        };
         document.getElementById('shareBtn').onclick = async () => {
-          const text = `Payo Transfer\\nAmount: ${formatMoneyNGN(receipt.amount || 0)}\\nTo: ${receipt.recipient_phone_or_email || receipt.recipient_id || ''}\\nRef: ${receipt.provider_reference || receipt.id || ''}`;
+          const text = `Payo Transfer\\nAmount: ${formatAmount(receipt.amount || 0, 'NGN')}\\nTo: ${receipt.recipient_phone_or_email || receipt.recipient_id || ''}\\nRef: ${receipt.provider_reference || receipt.id || ''}`;
           try {
             await navigator.share({ text });
           } catch {
@@ -1092,7 +1663,7 @@
       }
 
       const receipt = JSON.parse(sessionStorage.getItem('billReceipt') || '{}');
-      const receiptAmount = receipt.amount != null ? formatMoney(receipt.amount, receipt.currency || 'NGN') : '';
+      const receiptAmount = receipt.amount != null ? formatAmount(receipt.amount, receipt.currency || 'NGN') : '';
       const receiptLine = receipt.clientName && receiptAmount
         ? `<div class="muted" style="margin-top:8px">${escapeHtml(receipt.clientName)} — ${receiptAmount}</div>`
         : receiptAmount
@@ -1113,32 +1684,263 @@
           </div>
         </div>
       `;
-      document.getElementById('billHomeBtn').onclick = () => {
+      document.getElementById('billHomeBtn').onclick = async () => {
         sessionStorage.removeItem('billReceipt');
+        await refreshEarningsBar({ celebrate: true });
         navTo('home');
       };
     }
 
-    function renderCollectFlow() {
+    function renderQuickLinkFlow(route) {
       setActiveTab('home');
+      const step = (route || 'quick').split('/')[1] || '';
+
+      if (step === 'success') {
+        const receipt = JSON.parse(sessionStorage.getItem('quickLinkReceipt') || '{}');
+        const paymentUrl = receipt.payment_url || '';
+        host.innerHTML = `
+          <div class="screen">
+            <div class="center" style="padding-top:20px">
+              <div class="check">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+              </div>
+              <div style="font-weight:1000;font-size:20px">${t('linkReady')}</div>
+              ${
+                receipt.amount
+                  ? `<div class="muted" style="margin-top:8px">${formatAmount(receipt.amount, receipt.currency || 'NGN')}</div>`
+                  : ''
+              }
+              <div class="linkUrlBox" id="paymentUrlText">${escapeHtml(paymentUrl)}</div>
+              <button type="button" class="btn copyLarge" id="copyLinkBtn">${t('copyLink')}</button>
+              <button type="button" class="btn waShare" id="waShareBtn">${t('shareOnWhatsApp')}</button>
+              <a class="createAnother" id="quickAnother" href="#">${t('createAnother')}</a>
+            </div>
+          </div>
+        `;
+        document.getElementById('copyLinkBtn').onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(paymentUrl);
+            alert(getLang() === 'pid' ? 'Link don copy!' : 'Link copied!');
+          } catch {
+            alert(t('error'));
+          }
+        };
+        document.getElementById('waShareBtn').onclick = () => {
+          const text = `Please pay me here: ${paymentUrl}`;
+          window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        };
+        document.getElementById('quickAnother').onclick = (e) => {
+          e.preventDefault();
+          sessionStorage.removeItem('quickLinkReceipt');
+          navTo('quick');
+        };
+        return;
+      }
+
+      const state = JSON.parse(sessionStorage.getItem('quickLinkFlow') || '{}');
+      const cur = state.currency || 'NGN';
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">${t('quickLink')}</div>
+          <div class="card" style="padding:14px">
+            <div class="curToggle" id="curToggle">
+              <button type="button" data-cur="NGN" class="${cur === 'NGN' ? 'active' : ''}">₦ NGN</button>
+              <button type="button" data-cur="USD" class="${cur === 'USD' ? 'active' : ''}">$ USD</button>
+            </div>
+            <input class="input quickAmountInput" id="quickAmt" inputmode="decimal" placeholder="${cur === 'USD' ? '$0' : '₦0'}" value="${state.amount || ''}">
+            <div class="muted" style="font-size:12px;margin-top:12px;margin-bottom:8px">${t('wetinEFor')}</div>
+            <input class="input" id="quickDesc" placeholder="${t('wetinEFor')}" value="${state.description || ''}">
+            <div class="row" style="margin-top:14px">
+              <button class="btn secondary" type="button" id="quickBackBtn">${t('back')}</button>
+              <div class="spacer"></div>
+              <button class="btn" type="button" id="quickGenBtn">${t('generateLink')}</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      let selectedCur = cur;
+      host.querySelectorAll('#curToggle button').forEach((btn) => {
+        btn.onclick = () => {
+          selectedCur = btn.dataset.cur;
+          host.querySelectorAll('#curToggle button').forEach((b) => {
+            b.classList.toggle('active', b.dataset.cur === selectedCur);
+          });
+          const inp = document.getElementById('quickAmt');
+          inp.placeholder = selectedCur === 'USD' ? '$0' : '₦0';
+        };
+      });
+
+      document.getElementById('quickBackBtn').onclick = () => navTo('home');
+      document.getElementById('quickGenBtn').onclick = async () => {
+        const genBtn = document.getElementById('quickGenBtn');
+        try {
+          const user = window.Clerk?.user;
+          if (!user?.id) return alert(t('error'));
+
+          const amount = parseAmount(document.getElementById('quickAmt').value);
+          const description = document.getElementById('quickDesc').value.trim();
+
+          if (!Number.isFinite(amount) || amount <= 0) return alert(t('error'));
+
+          genBtn.disabled = true;
+          const token = await window.Clerk.session.getToken();
+          const res = await fetch('/invoices/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              freelancer_id: user.id,
+              freelancer_email: user.primaryEmailAddress?.emailAddress || null,
+              freelancer_name: user.fullName || 'Payo User',
+              client_name: 'Quick Payment',
+              client_email: null,
+              client_phone: null,
+              currency: selectedCur,
+              project_description: description || 'Quick Payment',
+              amount,
+              due_date: dueDateIn30Days(),
+            }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) {
+            throw new Error(j.error || 'Failed to generate link');
+          }
+          if (!j.payment_url) {
+            throw new Error('No payment URL returned');
+          }
+
+          sessionStorage.setItem(
+            'quickLinkReceipt',
+            JSON.stringify({
+              payment_url: j.payment_url,
+              amount,
+              currency: selectedCur,
+            })
+          );
+          sessionStorage.removeItem('quickLinkFlow');
+          navTo('quick/success');
+        } catch (err) {
+          alert(err.message || t('error'));
+        } finally {
+          genBtn.disabled = false;
+        }
+      };
+      wireFormInputs(host);
+    }
+
+    function renderCollectFlow(route) {
+      setActiveTab('home');
+      const step = (route || 'collect').split('/')[1] || '';
+
+      if (step === 'success') {
+        const receipt = JSON.parse(sessionStorage.getItem('collectReceipt') || '{}');
+        host.innerHTML = `
+          <div class="screen">
+            <div class="center">
+              <div class="check">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+              </div>
+              <div style="font-weight:1000;font-size:18px">${t('requestSent')}</div>
+              ${
+                receipt.clientName && receipt.amount
+                  ? `<div class="muted" style="margin-top:8px">${escapeHtml(receipt.clientName)} — ${formatAmount(receipt.amount, 'NGN')}</div>`
+                  : ''
+              }
+              <div class="pillRow">
+                <button class="pill" type="button" id="collectHomeBtn">Back to home</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('collectHomeBtn').onclick = async () => {
+          sessionStorage.removeItem('collectReceipt');
+          await refreshEarningsBar({ celebrate: false });
+          navTo('home');
+        };
+        return;
+      }
+
+      const state = JSON.parse(sessionStorage.getItem('collectFlow') || '{}');
       host.innerHTML = `
         <div class="screen">
           <div class="sectionTitle">${t('collectMoney')}</div>
           <div class="card" style="padding:14px">
-            <div class="muted" style="font-size:12px;margin-bottom:8px">Who you wan collect money from?</div>
-            <input class="input" id="whoInput" placeholder="Phone or email">
+            <div class="muted" style="font-size:12px;margin-bottom:8px">${t('whoOwes')}</div>
+            <input class="input" id="nameInput" placeholder="Name" value="${state.name || ''}">
             <div style="height:10px"></div>
-            <input class="input" id="amtInput" inputmode="numeric" placeholder="₦0">
+            <input class="input" id="emailInput" placeholder="Email (optional)" value="${state.email || ''}">
+            <div style="height:10px"></div>
+            <input class="input" id="phoneInput" placeholder="Phone (optional)" value="${state.phone || ''}">
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">${t('howMuch')}</div>
+            <input class="input" id="amtInput" inputmode="numeric" placeholder="${formatAmount(0, 'NGN')}" value="${state.amount || ''}">
             <div class="row" style="margin-top:12px">
-              <button class="btn secondary" type="button" onclick="location.hash='home'">${t('back')}</button>
+              <button class="btn secondary" type="button" id="collectBackBtn">${t('back')}</button>
               <div class="spacer"></div>
               <button class="btn" type="button" id="reqBtn">Send Request</button>
             </div>
           </div>
-          <div class="muted" style="font-size:12px;margin-top:10px">Request flow UI only (backend coming soon)</div>
         </div>
       `;
-      document.getElementById('reqBtn').onclick = () => alert('Request sent (stub)');
+      document.getElementById('collectBackBtn').onclick = () => navTo('home');
+      document.getElementById('reqBtn').onclick = async () => {
+        const reqBtn = document.getElementById('reqBtn');
+        try {
+          const user = window.Clerk?.user;
+          if (!user?.id) return alert(t('error'));
+
+          const nameInput = document.getElementById('nameInput').value.trim();
+          const emailInput = document.getElementById('emailInput').value.trim();
+          const phoneInput = document.getElementById('phoneInput').value.trim();
+          const amountInput = parseAmount(document.getElementById('amtInput').value);
+
+          if (!nameInput) return alert(t('error'));
+          if (!emailInput && !phoneInput) return alert('Enter email or phone');
+          if (!Number.isFinite(amountInput) || amountInput <= 0) return alert(t('error'));
+
+          reqBtn.disabled = true;
+          const token = await window.Clerk.session.getToken();
+          const dueDateStr = dueDateIn7Days();
+
+          const res = await fetch('/invoices/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              freelancer_id: user.id,
+              freelancer_email: user.primaryEmailAddress?.emailAddress || null,
+              freelancer_name: user.fullName || 'Payo User',
+              client_name: nameInput,
+              client_email: emailInput || null,
+              client_phone: phoneInput || null,
+              project_description: 'Payment Request',
+              amount: amountInput,
+              due_date: dueDateStr,
+              currency: 'NGN',
+            }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) {
+            throw new Error(j.error || 'Failed to send request');
+          }
+
+          sessionStorage.setItem(
+            'collectReceipt',
+            JSON.stringify({ clientName: nameInput, amount: amountInput })
+          );
+          sessionStorage.removeItem('collectFlow');
+          navTo('collect/success');
+        } catch (err) {
+          alert(err.message || t('error'));
+        } finally {
+          reqBtn.disabled = false;
+        }
+      };
       wireFormInputs(host);
     }
 
@@ -1287,7 +2089,7 @@
                   <div class="name">${escapeHtml(who)}</div>
                   <div class="sub">${escapeHtml(label)} • ${new Date(r.date).toLocaleDateString()}</div>
                 </div>
-                <div class="amt ${cls}">${(r.kind==='transfer' ? '-' : '')}${formatMoney(r.amount, r.currency || 'NGN')}</div>
+                <div class="amt ${cls}">${(r.kind==='transfer' ? '-' : '')}${formatAmount(r.amount, r.currency || 'NGN')}</div>
               </div>
             `;
           }).join('');

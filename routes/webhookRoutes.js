@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const supabase = require('../supabase');
 const { sendPaymentConfirmationEmail } = require('../mailer');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
+const { updateUserEarnings } = require('../services/earningsService');
 
 const router = express.Router();
 
@@ -131,6 +132,25 @@ router.post('/', async (req, res) => {
     console.log(`[Paystack Webhook] Invoice ${invoiceId} marked as paid`);
 
     const paidInvoice = updatedInvoice || invoice;
+    const freelancerId = paidInvoice.freelancer_id || invoice.freelancer_id;
+
+    if (freelancerId) {
+      try {
+        const earningsResult = await updateUserEarnings(
+          freelancerId,
+          paidInvoice.amount ?? invoice.amount,
+          paidInvoice.currency || invoice.currency || 'NGN'
+        );
+        console.log(
+          `[Paystack Webhook] Earnings updated for ${freelancerId} — tier ${earningsResult.tier}, +₦${earningsResult.earningsThisTransaction}`
+        );
+      } catch (earningsErr) {
+        console.error(
+          '[Paystack Webhook] Earnings update failed:',
+          earningsErr.message
+        );
+      }
+    }
     const freelancerEmail = await resolveFreelancerEmail(
       paidInvoice,
       paidInvoice.freelancer_id || invoice.freelancer_id

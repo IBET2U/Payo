@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const supabase = require('../supabase');
 const { sendPaymentConfirmationEmail } = require('../mailer');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
+const { updateUserEarnings } = require('../services/earningsService');
 
 const router = express.Router();
 
@@ -187,6 +188,25 @@ router.post('/', async (req, res) => {
     );
 
     const paidInvoice = updatedInvoice || invoice;
+    const freelancerId = paidInvoice.freelancer_id || invoice.freelancer_id;
+
+    if (freelancerId) {
+      try {
+        const earningsResult = await updateUserEarnings(
+          freelancerId,
+          paidInvoice.amount ?? invoice.amount,
+          paidInvoice.currency || invoice.currency || 'USD'
+        );
+        console.log(
+          `[NOWPayments Webhook] Earnings updated for ${freelancerId} — tier ${earningsResult.tier}, +₦${earningsResult.earningsThisTransaction}`
+        );
+      } catch (earningsErr) {
+        console.error(
+          '[NOWPayments Webhook] Earnings update failed:',
+          earningsErr.message
+        );
+      }
+    }
     const freelancerEmail = await resolveFreelancerEmail(
       paidInvoice,
       paidInvoice.freelancer_id || invoice.freelancer_id

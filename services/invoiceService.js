@@ -34,25 +34,31 @@ async function createAndSendInvoice({
   const cleanClientEmail = trimOrNull(client_email);
   const rawClientPhone = trimOrNull(client_phone);
   const normalizedClientPhone = rawClientPhone ? normalizeNigerianPhone(rawClientPhone) : null;
+  const isQuickPayment = String(client_name || '').trim() === 'Quick Payment';
 
-  if (!cleanClientEmail && !normalizedClientPhone) {
+  if (!isQuickPayment && !cleanClientEmail && !normalizedClientPhone) {
     throw new Error('At least one of client_email or client_phone is required');
   }
 
-  console.log('[INVOICE DEBUG] Calling generateInvoice with currency:', normalizedCurrency);
-  let invoice_content = await generateInvoice(
-    project_description,
-    client_name,
-    amount,
-    due_date,
-    normalizedCurrency
-  );
-
-  invoice_content = enforceCurrencyInInvoiceBody(
-    invoice_content,
-    normalizedCurrency,
-    amount
-  );
+  let invoice_content;
+  if (isQuickPayment) {
+    const desc = trimOrNull(project_description) || 'Quick Payment';
+    invoice_content = `Payo Quick Payment Link\n\n${desc}\nAmount due: ${amount}\nDue: ${due_date}`;
+  } else {
+    console.log('[INVOICE DEBUG] Calling generateInvoice with currency:', normalizedCurrency);
+    invoice_content = await generateInvoice(
+      project_description,
+      client_name,
+      amount,
+      due_date,
+      normalizedCurrency
+    );
+    invoice_content = enforceCurrencyInInvoiceBody(
+      invoice_content,
+      normalizedCurrency,
+      amount
+    );
+  }
 
   let freelancerProfilePhone = null;
   let freelancerWalletAddress;

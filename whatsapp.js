@@ -3,6 +3,8 @@ const twilio = require('twilio');
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const rawWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || '';
+const PAYO_APP_URL =
+  process.env.PAYO_APP_URL || 'https://payo-production.up.railway.app';
 
 const fromWhatsAppNumber = rawWhatsAppNumber.startsWith('whatsapp:')
   ? rawWhatsAppNumber
@@ -164,9 +166,135 @@ Your money is on its way. Keep up the great work! 💪
   return sendWhatsAppMessage(freelancerPhone, body, 'Payment confirmation');
 }
 
+async function sendTierUpgradeWhatsApp(freelancerPhone, newTier, earningsRate, monthlyVolume) {
+  const tier = String(newTier || 'BRONZE').toUpperCase();
+  const rate = Number(earningsRate);
+  const rateDisplay = Number.isFinite(rate) ? rate : earningsRate;
+  const volume = formatAmount(monthlyVolume);
+
+  const body = `🎉 Congratulations! You just reached ${tier} status on Payo!
+
+Your new earnings rate: ${rateDisplay}% back on every transaction
+Monthly volume so far: ₦${volume}
+
+Keep going — every naira you process earns you more this month. 💚
+
+— The Payo Team`;
+
+  return sendWhatsAppMessage(freelancerPhone, body, 'Tier upgrade');
+}
+
+async function sendMonthlyEarningsSummary(
+  freelancerPhone,
+  month,
+  tier,
+  totalEarnings,
+  nextMonthTip
+) {
+  const monthLabel = month || 'last month';
+  const tierLabel = String(tier || 'BRONZE').toUpperCase();
+  const total = formatAmount(totalEarnings);
+  const tip = nextMonthTip || 'Keep processing through Payo to grow your tier next month.';
+
+  const body = `💰 Your Payo earnings for ${monthLabel} are ready!
+
+Tier achieved: ${tierLabel}
+Total earned: ₦${total}
+Credited to your Payo wallet now.
+
+${tip}
+
+Thank you for being part of Payo 💚
+— The Payo Team`;
+
+  return sendWhatsAppMessage(freelancerPhone, body, 'Monthly earnings summary');
+}
+
+async function sendTierProgressReminder(
+  freelancerPhone,
+  currentTier,
+  nextTier,
+  amountNeeded,
+  daysLeft,
+  nextRate,
+  estimatedBonus,
+  payoUrl = PAYO_APP_URL
+) {
+  const current = String(currentTier || 'BRONZE').toUpperCase();
+  const next = String(nextTier || '').toUpperCase();
+  const needed = formatAmount(amountNeeded);
+  const days = Number(daysLeft) || 0;
+  const rate = nextRate != null ? Number(nextRate) : null;
+  const rateDisplay = Number.isFinite(rate) ? rate : nextRate || '—';
+  const bonus =
+    estimatedBonus != null ? `₦${formatAmount(estimatedBonus)}` : 'more earnings';
+  const url = payoUrl || PAYO_APP_URL;
+
+  const body = `Omo you dey close! 👀
+
+You need just ₦${needed} more to reach ${next} this month.
+${days} days remaining.
+
+If you reach ${next} your earnings rate jumps to ${rateDisplay}% —
+that's ${bonus} extra in your pocket this month.
+
+Process more through Payo now: ${url}
+
+— The Payo Team`;
+
+  return sendWhatsAppMessage(
+    freelancerPhone,
+    body,
+    `Tier progress reminder (${current} → ${next})`
+  );
+}
+
+async function sendMonthlyEarningsCreditedWhatsApp(freelancerPhone, amount, monthLabel) {
+  const formattedAmount = formatAmount(amount);
+  const month = monthLabel || 'last month';
+
+  const body = `Your Payo earnings for ${month}: ₦${formattedAmount} 💚
+
+The amount has been added to your Payo wallet. Keep growing your tier!
+
+— The Payo Team`;
+
+  return sendWhatsAppMessage(freelancerPhone, body, 'Monthly earnings credit');
+}
+
+async function sendMonthlyEarningsSummaryWhatsApp(freelancerPhone, summary = {}) {
+  const {
+    month,
+    tier,
+    monthlyVolume,
+    transactionEarnings,
+    networkEarnings,
+    totalEarnings,
+  } = summary;
+
+  const body = `📊 Payo earnings summary — ${month || 'last month'}
+
+Tier reached: ${tier || 'BRONZE'}
+Volume processed: ₦${formatAmount(monthlyVolume || 0)}
+Transaction earnings: ₦${formatAmount(transactionEarnings || 0)}
+Network earnings: ₦${formatAmount(networkEarnings || 0)}
+Total earnings: ₦${formatAmount(totalEarnings || 0)}
+
+Your tier resets to BRONZE this month. Every payment counts — let's go! 💚
+
+— The Payo Team`;
+
+  return sendWhatsAppMessage(freelancerPhone, body, 'Monthly earnings summary (detailed)');
+}
+
 module.exports = {
   sendInvoiceWhatsApp,
   sendFollowUpWhatsApp,
   sendPaymentConfirmedWhatsApp,
+  sendTierUpgradeWhatsApp,
+  sendMonthlyEarningsSummary,
+  sendTierProgressReminder,
+  sendMonthlyEarningsCreditedWhatsApp,
+  sendMonthlyEarningsSummaryWhatsApp,
   normalizeNigerianPhone,
 };
