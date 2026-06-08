@@ -137,14 +137,27 @@ async function fetchProfile(userId) {
     .eq('id', userId)
     .maybeSingle();
 
-  if (error) throw error;
-  if (!data) throw new Error(`Freelancer profile not found: ${userId}`);
+  if (error) {
+    console.error('[Earnings] fetchProfile failed:', error.message);
+    return null;
+  }
+  if (!data) {
+    console.error(`[Earnings] Freelancer profile not found: ${userId}`);
+    return null;
+  }
   return data;
 }
 
 async function updateUserEarnings(userId, transactionAmount, currency, options = {}) {
+  console.log('[EARNINGS] updateUserEarnings called with:', {
+    userId,
+    transactionAmount,
+    currency,
+  });
+
   const { isNetworkTransaction = false } = options;
   const profile = await fetchProfile(userId);
+  if (!profile) return null;
 
   const volumeNgn = toNgnAmount(transactionAmount, currency);
   const previousVolume = toNumber(profile.monthly_volume);
@@ -179,9 +192,16 @@ async function updateUserEarnings(userId, transactionAmount, currency, options =
     .update(updatePayload)
     .eq('id', userId)
     .select('*')
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[Earnings] updateUserEarnings failed:', error.message);
+    return null;
+  }
+  if (!updated) {
+    console.error(`[Earnings] updateUserEarnings returned no profile for: ${userId}`);
+    return null;
+  }
 
   return {
     profile: updated,
@@ -196,6 +216,8 @@ async function updateUserEarnings(userId, transactionAmount, currency, options =
 
 async function creditMonthlyEarnings(userId) {
   const profile = await fetchProfile(userId);
+  if (!profile) return null;
+
   const amount = roundMoney(profile.monthly_earnings);
 
   if (amount <= 0) {
@@ -208,9 +230,16 @@ async function creditMonthlyEarnings(userId) {
     .update({ wallet_balance: newBalance })
     .eq('id', userId)
     .select('*')
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[Earnings] creditMonthlyEarnings update failed:', error.message);
+    return null;
+  }
+  if (!updated) {
+    console.error(`[Earnings] creditMonthlyEarnings returned no profile for: ${userId}`);
+    return null;
+  }
 
   if (updated.phone) {
     try {
@@ -258,7 +287,10 @@ async function monthlyReset() {
 
     try {
       if (totalEarnings > 0) {
-        await creditMonthlyEarnings(userId);
+        const creditResult = await creditMonthlyEarnings(userId);
+        if (!creditResult) {
+          throw new Error('Failed to credit monthly earnings');
+        }
       }
 
       const { error: historyError } = await supabase.from('monthly_earnings_history').insert({

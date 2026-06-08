@@ -526,6 +526,170 @@
       padding:10px 12px;border-radius:999px;border:1px solid var(--border);
       background:#14222a;color:var(--text);font-weight:700;cursor:pointer;
     }
+
+    /* Community */
+    .communityHeader{
+      margin-bottom:14px;
+    }
+    .communityHeader h2{
+      font-size:20px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .communityHeader p{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .postWinBtn{
+      width:100%;
+      margin-bottom:14px;
+      padding:14px;
+      font-size:15px;
+      background:linear-gradient(135deg,#18f1c1,#00a884 55%,#007c62);
+      border:none;
+      color:#06221a;
+      font-weight:900;
+    }
+    .communityFeed{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .communityCard{
+      padding:14px;
+      border-radius:16px;
+      border:1px solid var(--border);
+      background:var(--card);
+    }
+    .communityCardTop{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+    }
+    .tierAvatar{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      background:#14222a;
+      border:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:24px;
+      flex-shrink:0;
+    }
+    .communityMeta{
+      flex:1;
+      min-width:0;
+    }
+    .communityName{
+      font-weight:900;
+      font-size:15px;
+    }
+    .communityCity{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:2px;
+    }
+    .communityTime{
+      font-size:11px;
+      color:var(--muted);
+      margin-top:2px;
+    }
+    .communityMessage{
+      margin-top:12px;
+      font-size:14px;
+      line-height:1.45;
+    }
+    .communityAmount{
+      margin-top:8px;
+      font-size:18px;
+      font-weight:900;
+      color:#ffd700;
+    }
+    .communityReactions{
+      display:flex;
+      gap:8px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+    .reactionBtn{
+      border:1px solid var(--border);
+      background:#121f27;
+      color:var(--text);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+      font-weight:700;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+    .reactionBtn:hover{
+      border-color:#3b4a53;
+      background:#14222a;
+    }
+    .reactionBtn:active{
+      transform:scale(.98);
+    }
+    .communityEmpty{
+      text-align:center;
+      padding:32px 16px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+    .communityModal{
+      position:fixed;
+      inset:0;
+      z-index:50;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      background:rgba(11,20,26,.75);
+      backdrop-filter:blur(4px);
+    }
+    .communityModalInner{
+      width:100%;
+      max-width:480px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:20px 20px 0 0;
+      padding:18px 16px 24px;
+      animation:slideUp .22s ease;
+    }
+    @keyframes slideUp{
+      from{transform:translateY(20px);opacity:.7}
+      to{transform:translateY(0);opacity:1}
+    }
+    .anonToggle{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .anonToggle button{
+      flex:1;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#14222a;
+      color:var(--muted);
+      font-weight:800;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .anonToggle button.active{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+    .nav .tab{
+      font-size:11px;
+      padding:8px 4px;
+    }
+    .nav .tab span{
+      font-size:16px;
+    }
   </style>
 </head>
 <body>
@@ -559,6 +723,7 @@
       <div class="nav">
         <div class="tab active" data-tab="home"><span>🏠</span>Home</div>
         <div class="tab" data-tab="track"><span>🧾</span>Track</div>
+        <div class="tab" data-tab="community"><span>👥</span>Community</div>
         <div class="tab" data-tab="chat"><span>🤖</span>AI</div>
         <div class="tab" data-tab="settings"><span>⚙️</span>Settings</div>
       </div>
@@ -678,10 +843,21 @@
     let clerkSignUpMounted = false;
     let freelancer = null;
     let userProfile = null;
+    let profileFlags = { has_wallet: false, has_bank: false };
     let messages = [];
     let chatLoading = false;
     let pendingRender = false;
     let earningsData = null;
+    let communityFeedInterval = null;
+    let communityPosts = [];
+
+    const TIER_EMOJI = {
+      BRONZE: '🥉',
+      SILVER: '🥈',
+      GOLD: '🥇',
+      PLATINUM: '💎',
+      DIAMOND: '👑',
+    };
 
     const TIER_COLORS = {
       BRONZE: '#cd7f32',
@@ -725,12 +901,11 @@
     }
 
     async function postTransferSend(payload) {
-      const token = await window.Clerk.session?.getToken();
       const res = await fetch('/transfers/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${await window.Clerk.session.getToken()}`,
         },
         body: JSON.stringify(payload),
       });
@@ -961,6 +1136,278 @@
       return `${day}d`;
     }
 
+    function communityTimeAgo(iso) {
+      const d = new Date(iso);
+      const ms = Date.now() - d.getTime();
+      const min = Math.floor(ms / 60000);
+      if (min < 1) return 'Just now';
+      if (min < 60) return `${min} minute${min === 1 ? '' : 's'} ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+      const day = Math.floor(hr / 24);
+      if (day === 1) return 'Yesterday';
+      if (day < 7) return `${day} days ago`;
+      return d.toLocaleDateString();
+    }
+
+    function tierEmoji(tier) {
+      return TIER_EMOJI[String(tier || 'BRONZE').toUpperCase()] || TIER_EMOJI.BRONZE;
+    }
+
+    function stopCommunityRefresh() {
+      if (communityFeedInterval) {
+        clearInterval(communityFeedInterval);
+        communityFeedInterval = null;
+      }
+    }
+
+    async function fetchCommunityFeed() {
+      const res = await fetch('/community/feed', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to load feed');
+      return data.posts || [];
+    }
+
+    function buildPaymentWinMessage(amount, currency) {
+      const cur = String(currency || 'NGN').toUpperCase();
+      const formatted = formatAmount(amount, cur);
+      if (cur === 'USD') {
+        return `Just received ${formatted} internationally through Payo 🌍`;
+      }
+      return `Just got paid ${formatted} for client work through Payo 💚`;
+    }
+
+    async function getWinDraft() {
+      const stored = sessionStorage.getItem('payoWinDraft');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+
+      if (!freelancer?.id) return null;
+
+      try {
+        const res = await fetch(`/invoices/${encodeURIComponent(freelancer.id)}`, {
+          headers: await getAuthHeaders(),
+          cache: 'no-store',
+        });
+        const j = await res.json().catch(() => ({}));
+        const invoices = res.ok ? (j.invoices || []) : [];
+        const latestPaid = invoices.find((inv) => String(inv.status).toLowerCase() === 'paid');
+        if (!latestPaid || !latestPaid.amount) return null;
+
+        const paidAt = new Date(latestPaid.paid_at || latestPaid.updated_at || latestPaid.created_at || 0);
+        const hoursSincePaid = (Date.now() - paidAt.getTime()) / (1000 * 60 * 60);
+        if (hoursSincePaid > 48) return null;
+
+        return {
+          amount: Number(latestPaid.amount),
+          currency: latestPaid.currency || 'NGN',
+          message: buildPaymentWinMessage(latestPaid.amount, latestPaid.currency || 'NGN'),
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    function renderCommunityPostCard(post) {
+      const name = post.is_anonymous
+        ? 'Anonymous Professional'
+        : (post.display_name || 'Payo Professional');
+      const cityLine = post.city
+        ? `<div class="communityCity">${escapeHtml(post.city)}</div>`
+        : '';
+      const amountLine = post.amount != null && Number(post.amount) > 0
+        ? `<div class="communityAmount">${formatAmount(post.amount, post.currency || 'NGN')}</div>`
+        : '';
+
+      return `
+        <div class="communityCard" data-post-id="${escapeAttr(post.id)}">
+          <div class="communityCardTop">
+            <div class="tierAvatar">${tierEmoji(post.tier)}</div>
+            <div class="communityMeta">
+              <div class="communityName">${escapeHtml(name)}</div>
+              ${cityLine}
+              <div class="communityTime">${communityTimeAgo(post.created_at)}</div>
+            </div>
+          </div>
+          <div class="communityMessage">${escapeHtml(post.message)}</div>
+          ${amountLine}
+          <div class="communityReactions">
+            <button type="button" class="reactionBtn" data-react="green" data-id="${escapeAttr(post.id)}">💚 ${Number(post.green_count || 0)}</button>
+            <button type="button" class="reactionBtn" data-react="fire" data-id="${escapeAttr(post.id)}">🔥 ${Number(post.fire_count || 0)}</button>
+            <button type="button" class="reactionBtn" data-react="clap" data-id="${escapeAttr(post.id)}">👏 ${Number(post.clap_count || 0)}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCommunityFeedList(posts) {
+      const feed = document.getElementById('communityFeed');
+      if (!feed) return;
+
+      if (!posts.length) {
+        feed.innerHTML = `<div class="communityEmpty">No wins shared yet. Be the first! 🚀</div>`;
+        return;
+      }
+
+      feed.innerHTML = posts.map(renderCommunityPostCard).join('');
+      feed.querySelectorAll('[data-react]').forEach((btn) => {
+        btn.onclick = async () => {
+          if (!window.Clerk?.session) {
+            alert('Sign in to react');
+            return;
+          }
+          try {
+            btn.disabled = true;
+            const res = await fetch(`/community/react/${encodeURIComponent(btn.dataset.id)}`, {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify({ reaction: btn.dataset.react }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.success) throw new Error(j.error || 'Reaction failed');
+            const idx = communityPosts.findIndex((p) => p.id === j.post.id);
+            if (idx >= 0) communityPosts[idx] = j.post;
+            renderCommunityFeedList(communityPosts);
+          } catch (err) {
+            alert(err.message || t('error'));
+          } finally {
+            btn.disabled = false;
+          }
+        };
+      });
+    }
+
+    async function loadCommunityFeed() {
+      const feed = document.getElementById('communityFeed');
+      if (!feed) return;
+      try {
+        communityPosts = await fetchCommunityFeed();
+        renderCommunityFeedList(communityPosts);
+      } catch (err) {
+        feed.innerHTML = `<div class="communityEmpty">${escapeHtml(err.message || t('error'))}</div>`;
+      }
+    }
+
+    function closeCommunityModal() {
+      const modal = document.getElementById('communityModal');
+      if (modal) modal.remove();
+    }
+
+    async function openCommunityPostModal() {
+      closeCommunityModal();
+      const draft = await getWinDraft();
+      let anonymous = true;
+
+      const modal = document.createElement('div');
+      modal.id = 'communityModal';
+      modal.className = 'communityModal';
+      modal.innerHTML = `
+        <div class="communityModalInner">
+          <div style="font-weight:900;font-size:17px;margin-bottom:12px">Share your win</div>
+          <div class="anonToggle" id="anonToggle">
+            <button type="button" data-anon="1" class="active">Share anonymously</button>
+            <button type="button" data-anon="0">Share with name</button>
+          </div>
+          <div id="nameField" class="hidden" style="margin-bottom:10px">
+            <input class="input" id="winDisplayName" placeholder="Your display name" value="${escapeAttr(freelancer?.name || '')}">
+          </div>
+          <input class="input" id="winCity" placeholder="City (optional)" style="margin-bottom:10px">
+          <textarea class="input" id="winMessage" rows="3" placeholder="What's your win?" style="margin-bottom:12px">${escapeHtml(draft?.message || '')}</textarea>
+          <div class="row">
+            <button type="button" class="btn secondary" id="winCancelBtn">${t('cancel')}</button>
+            <div class="spacer"></div>
+            <button type="button" class="btn" id="winPostBtn">Post</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeCommunityModal();
+      });
+
+      modal.querySelectorAll('#anonToggle button').forEach((btn) => {
+        btn.onclick = () => {
+          anonymous = btn.dataset.anon === '1';
+          modal.querySelectorAll('#anonToggle button').forEach((b) => {
+            b.classList.toggle('active', b.dataset.anon === (anonymous ? '1' : '0'));
+          });
+          document.getElementById('nameField').classList.toggle('hidden', anonymous);
+        };
+      });
+
+      document.getElementById('winCancelBtn').onclick = closeCommunityModal;
+      document.getElementById('winPostBtn').onclick = async () => {
+        const postBtn = document.getElementById('winPostBtn');
+        const message = document.getElementById('winMessage').value.trim();
+        if (!message) return alert('Tell us your win first');
+        if (!window.Clerk?.session) return alert(t('error'));
+
+        try {
+          postBtn.disabled = true;
+          const payload = {
+            post_type: draft?.amount ? 'payment' : 'win',
+            amount: draft?.amount || null,
+            currency: draft?.currency || null,
+            city: document.getElementById('winCity').value.trim() || null,
+            message,
+            is_anonymous: anonymous,
+            display_name: anonymous ? null : document.getElementById('winDisplayName').value.trim() || freelancer?.name || null,
+          };
+
+          const res = await fetch('/community/post', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed to post');
+
+          sessionStorage.removeItem('payoWinDraft');
+          closeCommunityModal();
+          communityPosts = [j.post, ...communityPosts.filter((p) => p.id !== j.post.id)].slice(0, 50);
+          renderCommunityFeedList(communityPosts);
+        } catch (err) {
+          alert(err.message || t('error'));
+        } finally {
+          postBtn.disabled = false;
+        }
+      };
+
+      wireFormInputs(modal);
+    }
+
+    function renderCommunity() {
+      setActiveTab('community');
+      stopCommunityRefresh();
+
+      host.innerHTML = `
+        <div class="screen" id="communityScreen">
+          <div class="communityHeader">
+            <h2>Payo Community 💚</h2>
+            <p>Nigerian professionals winning daily</p>
+          </div>
+          <button type="button" class="btn postWinBtn" id="postWinBtn">POST A WIN</button>
+          <div class="communityFeed" id="communityFeed">
+            <div class="communityEmpty">${t('loading')}</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('postWinBtn').onclick = openCommunityPostModal;
+      wireFormInputs(document.getElementById('communityScreen'));
+
+      loadCommunityFeed();
+      communityFeedInterval = setInterval(() => {
+        if ((window.location.hash.replace('#', '') || 'home') === 'community') {
+          loadCommunityFeed();
+        }
+      }, 60000);
+    }
+
     function initials(nameOrEmail) {
       const s = String(nameOrEmail || '').trim();
       if (!s) return 'P';
@@ -998,7 +1445,44 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load profile');
       userProfile = data.profile || null;
+      profileFlags = {
+        has_wallet: !!data.has_wallet,
+        has_bank: !!data.has_bank,
+      };
       return userProfile;
+    }
+
+    function profileSetupStep(profile) {
+      const p = profile || userProfile;
+      if (!p?.wallet_address || !String(p.wallet_address).trim()) return 'wallet';
+      if (!p?.subaccount_code || !String(p.subaccount_code).trim()) return 'bank';
+      return null;
+    }
+
+    async function ensureProfileSetup() {
+      try {
+        const profile = await fetchProfile();
+        const step = profileSetupStep(profile);
+        const route = window.location.hash.replace('#', '') || 'home';
+        if (step && !route.startsWith('profile-setup')) {
+          navTo(`profile-setup/${step}`);
+          return true;
+        }
+      } catch (err) {
+        console.warn('[Payo] Profile setup check failed:', err.message);
+      }
+      return false;
+    }
+
+    async function loadBanksIntoSelect(selectEl, selectedCode) {
+      const res = await fetch('/banks', { cache: 'no-store' });
+      const j = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.error || 'Failed to load banks');
+      const banks = j.banks || [];
+      selectEl.innerHTML =
+        '<option value="">Select bank</option>' +
+        banks.map((b) => `<option value="${escapeAttr(b.code)}">${escapeHtml(b.name)}</option>`).join('');
+      if (selectedCode) selectEl.value = selectedCode;
     }
 
     async function fetchRecentActivity() {
@@ -1011,7 +1495,7 @@
       const invoices = invoicesRes.ok ? (invoicesJson.invoices || []) : [];
 
       // transfers: last 5
-      const transfersRes = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, {
+      const transfersRes = await fetch('/transfers/history', {
         headers: await getAuthHeaders(),
         cache: 'no-store',
       });
@@ -1058,6 +1542,7 @@
       pendingRender = false;
 
       const route = window.location.hash.replace('#', '') || 'home';
+      if (route !== 'community') stopCommunityRefresh();
       if (route === 'home') return renderHome();
       if (route.startsWith('send')) return renderSendFlow(route);
       if (route.startsWith('bill')) return renderBillFlow(route);
@@ -1065,6 +1550,8 @@
       if (route.startsWith('global')) return renderGlobalFlow(route);
       if (route.startsWith('quick')) return renderQuickLinkFlow(route);
       if (route === 'track') return renderTrack();
+      if (route === 'community') return renderCommunity();
+      if (route.startsWith('profile-setup')) return renderProfileSetup(route);
       if (route === 'chat') return renderChat();
       if (route === 'settings') return renderSettings();
       return renderHome();
@@ -1287,7 +1774,7 @@
         };
         (async () => {
           try {
-            const res = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+            const res = await fetch('/transfers/history', { headers: await getAuthHeaders(), cache: 'no-store' });
             const j = await res.json().catch(() => ({}));
             const items = (j.transfers || []).slice(0, 3).map((tr) => tr.recipient_phone_or_email).filter(Boolean);
             const holder = document.getElementById('recentContacts');
@@ -1411,11 +1898,9 @@
         document.getElementById('sendBtn').onclick = async () => {
           const sendBtn = document.getElementById('sendBtn');
           try {
-            freelancer = getFreelancerFromClerk();
-            if (!freelancer?.id) return alert(t('error'));
+            if (!window.Clerk?.session) return alert(t('error'));
             sendBtn.disabled = true;
             const { res, j } = await postTransferSend({
-              senderId: window.Clerk.user.id,
               recipient: state.recipient,
               amount: state.amount,
               reason: state.reason || '',
@@ -1466,15 +1951,13 @@
         document.getElementById('bankSendBtn').onclick = async () => {
           const bankSendBtn = document.getElementById('bankSendBtn');
           try {
-            freelancer = getFreelancerFromClerk();
-            if (!freelancer?.id) return alert(t('error'));
+            if (!window.Clerk?.session) return alert(t('error'));
             const bankCode = document.getElementById('bankSelect').value;
             const accountNumber = document.getElementById('acctInput').value.trim();
             const name = document.getElementById('bankNameInput').value.trim();
             if (!bankCode || !accountNumber || !name) return alert(t('error'));
             bankSendBtn.disabled = true;
             const { res, j } = await postTransferSend({
-              senderId: window.Clerk.user.id,
               recipient: state.recipient,
               amount: state.amount,
               reason: state.reason || '',
@@ -1793,10 +2276,10 @@
             },
             body: JSON.stringify({
               freelancer_id: user.id,
-              freelancer_email: user.primaryEmailAddress?.emailAddress || null,
+              freelancer_email: user.primaryEmailAddress.emailAddress,
               freelancer_name: user.fullName || 'Payo User',
               client_name: 'Quick Payment',
-              client_email: null,
+              client_email: 'payments@payoapp.org',
               client_phone: null,
               currency: selectedCur,
               project_description: description || 'Quick Payment',
@@ -1808,14 +2291,15 @@
           if (!res.ok || !j.success) {
             throw new Error(j.error || 'Failed to generate link');
           }
-          if (!j.payment_url) {
+          const paymentUrl = j.payment_url || j.invoice?.payment_url;
+          if (!paymentUrl) {
             throw new Error('No payment URL returned');
           }
 
           sessionStorage.setItem(
             'quickLinkReceipt',
             JSON.stringify({
-              payment_url: j.payment_url,
+              payment_url: paymentUrl,
               amount,
               currency: selectedCur,
             })
@@ -2039,7 +2523,7 @@
           const invRes = await fetch(`/invoices/${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache:'no-store' });
           const invJson = await invRes.json().catch(() => ({}));
           const invoices = invRes.ok ? (invJson.invoices || []) : [];
-          const trRes = await fetch(`/transfers/history?senderId=${encodeURIComponent(freelancer.id)}`, { headers: await getAuthHeaders(), cache:'no-store' });
+          const trRes = await fetch('/transfers/history', { headers: await getAuthHeaders(), cache:'no-store' });
           const trJson = await trRes.json().catch(() => ({}));
           const transfers = trRes.ok ? (trJson.transfers || []) : [];
 
@@ -2186,11 +2670,179 @@
       wireFormInputs(host);
     }
 
+    function renderProfileSetup(route) {
+      const step = route.split('/')[1] || 'wallet';
+
+      if (step === 'wallet') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">Set up your profile</div>
+            <div class="muted" style="font-size:13px;margin-bottom:14px;line-height:1.4">
+              Step 1 of 2 — Add a crypto wallet to receive international USD payments.
+            </div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">Wallet address (USDT/USDC)</div>
+              <input class="input" id="walletInput" placeholder="0x... or T..." value="${escapeAttr(userProfile?.wallet_address || '')}">
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="walletSkipBtn">Skip for now</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="walletSaveBtn">Continue</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('walletSkipBtn').onclick = () => navTo('profile-setup/bank');
+        document.getElementById('walletSaveBtn').onclick = async () => {
+          const btn = document.getElementById('walletSaveBtn');
+          const wallet = document.getElementById('walletInput').value.trim();
+          if (!wallet) return alert('Enter a wallet address or tap Skip for now');
+          try {
+            btn.disabled = true;
+            const res = await fetch('/profile', {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify({
+                wallet_address: wallet,
+                email: freelancer?.email,
+                name: freelancer?.name,
+              }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to save wallet');
+            userProfile = j.profile;
+            profileFlags.has_wallet = !!j.has_wallet;
+            navTo('profile-setup/bank');
+          } catch (err) {
+            alert(err.message || t('error'));
+          } finally {
+            btn.disabled = false;
+          }
+        };
+        wireFormInputs(host);
+        return;
+      }
+
+      host.innerHTML = `
+        <div class="screen" id="bankSetupScreen">
+          <div class="sectionTitle">Receive Naira directly</div>
+          <div class="muted" style="font-size:13px;margin-bottom:14px;line-height:1.4">
+            Step 2 of 2 — Link your Nigerian bank account. Client payments settle straight to you. Payo keeps 1%.
+          </div>
+          <div class="card" style="padding:14px">
+            <div class="muted" style="font-size:12px;margin-bottom:8px">${t('selectBank')}</div>
+            <select class="input" id="setupBankSelect" style="padding:12px">
+              <option value="">${t('loading')}</option>
+            </select>
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">${t('accountNumber')}</div>
+            <input class="input" id="setupAcctInput" inputmode="numeric" placeholder="${t('accountNumber')}" value="${escapeAttr(userProfile?.bank_account_number || '')}">
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Business name on account</div>
+            <input class="input" id="setupBusinessInput" placeholder="Your name or business" value="${escapeAttr(userProfile?.business_name || freelancer?.name || '')}">
+            <div id="verifiedNameBox" class="hidden" style="margin-top:10px;padding:12px;border-radius:14px;background:#0f2a22;border:1px solid rgba(0,168,132,.35)">
+              <div class="muted" style="font-size:11px">Verified account name</div>
+              <div id="verifiedNameText" style="font-weight:900;margin-top:4px"></div>
+            </div>
+            <div class="row" style="margin-top:14px">
+              <button class="btn secondary" type="button" id="verifyBankBtn">Verify Account</button>
+              <div class="spacer"></div>
+              <button class="btn" type="button" id="saveBankBtn">Save Bank Account</button>
+            </div>
+            <button class="btn ghost" type="button" id="bankSkipBtn" style="width:100%;margin-top:8px">Skip for now</button>
+          </div>
+        </div>
+      `;
+
+      let verifiedAccountName = userProfile?.bank_account_name || null;
+
+      document.getElementById('bankSkipBtn').onclick = () => navTo('home');
+      document.getElementById('verifyBankBtn').onclick = async () => {
+        const btn = document.getElementById('verifyBankBtn');
+        const bankCode = document.getElementById('setupBankSelect').value;
+        const accountNumber = document.getElementById('setupAcctInput').value.trim();
+        if (!bankCode || !accountNumber) return alert(t('error'));
+        try {
+          btn.disabled = true;
+          const res = await fetch('/profile/bank/verify', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ bank_code: bankCode, account_number: accountNumber }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Verification failed');
+          verifiedAccountName = j.account_name;
+          document.getElementById('verifiedNameText').textContent = j.account_name || '—';
+          document.getElementById('verifiedNameBox').classList.remove('hidden');
+        } catch (err) {
+          alert(err.message || t('error'));
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      document.getElementById('saveBankBtn').onclick = async () => {
+        const btn = document.getElementById('saveBankBtn');
+        const bankCode = document.getElementById('setupBankSelect').value;
+        const accountNumber = document.getElementById('setupAcctInput').value.trim();
+        const businessName = document.getElementById('setupBusinessInput').value.trim();
+        if (!bankCode || !accountNumber) return alert(t('error'));
+        try {
+          btn.disabled = true;
+          const res = await fetch('/profile/bank', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+              bank_code: bankCode,
+              account_number: accountNumber,
+              business_name: businessName || freelancer?.name || null,
+              account_name: verifiedAccountName,
+            }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed to save bank account');
+          userProfile = j.profile;
+          profileFlags.has_bank = true;
+          alert('Bank account linked! Naira payments will go directly to your account.');
+          navTo('home');
+        } catch (err) {
+          alert(err.message || t('error'));
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      (async () => {
+        const sel = document.getElementById('setupBankSelect');
+        try {
+          await loadBanksIntoSelect(sel, userProfile?.bank_code || '');
+        } catch (err) {
+          sel.innerHTML = `<option value="">${escapeHtml(err.message)}</option>`;
+        }
+        if (userProfile?.bank_account_name) {
+          document.getElementById('verifiedNameText').textContent = userProfile.bank_account_name;
+          document.getElementById('verifiedNameBox').classList.remove('hidden');
+        }
+      })();
+
+      wireFormInputs(document.getElementById('bankSetupScreen'));
+    }
+
     function renderSettings() {
       setActiveTab('settings');
       host.innerHTML = `
         <div class="screen">
           <div class="sectionTitle">${t('Settings') || 'Settings'}</div>
+          <div class="card" style="padding:14px;margin-bottom:10px">
+            <div class="row">
+              <div class="col" style="gap:2px">
+                <div style="font-weight:900">Payout bank</div>
+                <div class="muted" style="font-size:12px">${profileFlags.has_bank ? 'Linked for Naira payments' : 'Not linked yet'}</div>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn secondary" type="button" id="bankSetupBtn">${profileFlags.has_bank ? 'Update' : 'Set up'}</button>
+            </div>
+          </div>
           <div class="card" style="padding:14px">
             <div class="row">
               <div class="col" style="gap:2px">
@@ -2205,8 +2857,19 @@
           </div>
         </div>
       `;
+      document.getElementById('bankSetupBtn').onclick = () => navTo('profile-setup/bank');
       document.getElementById('toggleBtn').onclick = () => langToggle.click();
       document.getElementById('logoutBtn').onclick = async () => { if (window.Clerk) await window.Clerk.signOut(); };
+
+      (async () => {
+        try {
+          await fetchProfile();
+          const statusEl = host.querySelector('.card .muted');
+          if (statusEl && profileFlags.has_bank) {
+            statusEl.textContent = 'Linked for Naira payments';
+          }
+        } catch {}
+      })();
     }
 
     function escapeHtml(text) {
@@ -2307,7 +2970,8 @@
           avatarEl.textContent = initials(freelancer.name);
           authScreen.classList.add('hidden');
           appEl.classList.remove('hidden');
-          if (!isUserTyping()) safeRender(true);
+          const redirected = await ensureProfileSetup();
+          if (!redirected && !isUserTyping()) safeRender(true);
         });
 
         if (window.Clerk.user) {
@@ -2315,7 +2979,8 @@
           avatarEl.textContent = initials(freelancer.name);
           authScreen.classList.add('hidden');
           appEl.classList.remove('hidden');
-          safeRender(true);
+          const redirected = await ensureProfileSetup();
+          if (!redirected) safeRender(true);
         } else {
           mountClerkAuth();
         }

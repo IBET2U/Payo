@@ -1,9 +1,14 @@
+const Sentry = require('@sentry/node');
+Sentry.init({ 
+  dsn: 'https://20572c681aea863a65f724d04d764512@o4511527778779136.ingest.us.sentry.io/4511527788085248',
+  tracesSampleRate: 1.0
+});
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const axios = require('axios');
 const rateLimit = require('express-rate-limit');
+const { getBanks } = require('./services/subaccountService');
 const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
@@ -13,6 +18,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const ussdRoutes = require('./routes/ussdRoutes');
 const transferRoutes = require('./routes/transferRoutes');
 const earningsRoutes = require('./routes/earningsRoutes');
+const communityRoutes = require('./routes/communityRoutes');
 require('./followUp');
 
 const app = express();
@@ -39,12 +45,13 @@ const chatLimiter = createRateLimiter(20);
 const invoicesLimiter = createRateLimiter(30);
 const transfersLimiter = createRateLimiter(20);
 const profileLimiter = createRateLimiter(20);
+const communityLimiter = createRateLimiter(60);
 
 const clerkRequireAuth = ClerkExpressRequireAuth();
 const publicDir = path.join(__dirname, 'public');
 const serveStatic = express.static(publicDir);
 
-const PUBLIC_PATHS = new Set(['/health', '/config', '/ussd']);
+const PUBLIC_PATHS = new Set(['/health', '/config', '/ussd', '/banks']);
 
 function isPublicRoute(path) {
   if (PUBLIC_PATHS.has(path)) return true;
@@ -61,6 +68,7 @@ function isApiRoute(path) {
     path.startsWith('/transfers') ||
     path === '/banks' ||
     path.startsWith('/earnings') ||
+    path.startsWith('/community') ||
     path === '/health' ||
     path === '/config' ||
     path.startsWith('/webhooks') ||
@@ -83,30 +91,15 @@ app.get('/config', (req, res) => {
   res.json({ clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || '' });
 });
 
-app.get('/banks', transfersLimiter, clerkRequireAuth, async (req, res) => {
+app.get('/banks', transfersLimiter, async (req, res) => {
   try {
-    const secret = process.env.PAYSTACK_SECRET_KEY;
-    if (!secret) {
-      return res.status(500).json({ success: false, error: 'PAYSTACK_SECRET_KEY is not configured' });
-    }
-
-    const { data } = await axios.get('https://api.paystack.co/bank', {
-      params: { country: 'nigeria', perPage: 100 },
-      headers: { Authorization: `Bearer ${secret}` },
-      timeout: 20000,
-    });
-
-    const banks = (data?.data || []).map((bank) => ({
-      name: bank.name,
-      code: bank.code,
-    }));
-
+    const banks = await getBanks();
     res.json({ success: true, banks });
   } catch (err) {
-    console.error('[Banks] List failed:', err.response?.data?.message || err.message);
+    console.error('[Banks] List failed:', err.message);
     res.status(500).json({
       success: false,
-      error: err.response?.data?.message || err.message || 'Failed to load banks',
+      error: err.message || 'Failed to load banks',
     });
   }
 });
@@ -119,6 +112,12 @@ app.use('/chat', chatLimiter, clerkRequireAuth, chatRoutes);
 app.use('/profile', profileLimiter, clerkRequireAuth, profileRoutes);
 app.use('/earnings', profileLimiter, clerkRequireAuth, earningsRoutes);
 app.use('/transfers', transfersLimiter, clerkRequireAuth, transferRoutes);
+app.use('/community', communityLimiter, (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/feed') {
+    return next();
+  }
+  return clerkRequireAuth(req, res, next);
+}, communityRoutes);
 app.use('/ussd', ussdRoutes);
 
 // Static files only for non-API paths (never intercept /profile, /chat, etc.)

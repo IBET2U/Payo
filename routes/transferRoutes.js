@@ -26,11 +26,12 @@ router.post('/resolve', async (req, res) => {
 
 router.post('/send', async (req, res) => {
   try {
-    const senderId = req.body?.senderId || req.body?.freelancer_id || req.auth?.userId;
+    console.log('[TRANSFER] Clerk userId:', req.auth?.userId);
+    const senderId = req.auth?.userId;
     const { recipient, amount, reason, accountNumber, bankCode, name } = req.body || {};
 
     if (!senderId) {
-      return res.status(400).json({ success: false, error: 'senderId is required' });
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
     if (!recipient) {
       return res.status(400).json({ success: false, error: 'recipient is required' });
@@ -53,17 +54,19 @@ router.post('/send', async (req, res) => {
       name,
     });
 
-    if (result.transfer?.recipient_type === 'payo' && result.transfer?.recipient_id) {
+    if (resolved.type === 'payo' && resolved.profile?.id) {
       try {
         const earningsResult = await updateUserEarnings(
-          result.transfer.recipient_id,
+          resolved.profile.id,
           amount,
           'NGN',
           { isNetworkTransaction: true }
         );
-        console.log(
-          `[Transfer] Network earnings updated for ${result.transfer.recipient_id} — tier ${earningsResult.tier}, +₦${earningsResult.earningsThisTransaction}`
-        );
+        if (earningsResult) {
+          console.log(
+            `[Transfer] Network earnings updated for ${resolved.profile.id} — tier ${earningsResult.tier}, +₦${earningsResult.earningsThisTransaction}`
+          );
+        }
       } catch (earningsErr) {
         console.error('[Transfer] Earnings update failed:', earningsErr.message);
       }
@@ -71,15 +74,16 @@ router.post('/send', async (req, res) => {
 
     return res.json({ success: true, ...result });
   } catch (err) {
+    console.error('[TRANSFER ERROR]', err.message, err.stack);
     return res.status(400).json({ success: false, error: err.message });
   }
 });
 
 router.get('/history', async (req, res) => {
   try {
-    const senderId = req.query?.senderId || req.auth?.userId;
+    const senderId = req.auth?.userId;
     if (!senderId) {
-      return res.status(400).json({ success: false, error: 'senderId is required' });
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
     const history = await getTransferHistory(senderId, 50);

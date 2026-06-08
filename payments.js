@@ -18,7 +18,15 @@ function toSmallestUnit(amount, currency) {
   throw new Error(`Unsupported currency: ${code}. Use NGN or USD.`);
 }
 
-async function initializePayment({ clientEmail, amount, invoiceId, clientName, currency = 'NGN' }) {
+async function initializePayment({
+  clientEmail,
+  amount,
+  invoiceId,
+  clientName,
+  currency = 'NGN',
+  subaccount,
+  bearer,
+}) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     throw new Error('PAYSTACK_SECRET_KEY is not configured');
@@ -40,6 +48,11 @@ async function initializePayment({ clientEmail, amount, invoiceId, clientName, c
 
   if (process.env.PAYSTACK_CALLBACK_URL) {
     payload.callback_url = process.env.PAYSTACK_CALLBACK_URL;
+  }
+
+  if (subaccount) {
+    payload.subaccount = subaccount;
+    payload.bearer = bearer || 'subaccount';
   }
 
   const response = await fetch(`${PAYSTACK_API}/transaction/initialize`, {

@@ -4,6 +4,7 @@ const supabase = require('../supabase');
 const { sendPaymentConfirmationEmail } = require('../mailer');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
 const { updateUserEarnings } = require('../services/earningsService');
+const { createPaymentCommunityPost } = require('./communityRoutes');
 
 const router = express.Router();
 
@@ -178,6 +179,25 @@ router.post('/', async (req, res) => {
       console.warn(
         `[Paystack Webhook] No freelancer_email for invoice ${invoiceId}, skipping confirmation email`
       );
+    }
+
+    const invoiceAmount = Number(paidInvoice.amount ?? invoice.amount ?? 0);
+    if (invoiceAmount > 0) {
+      try {
+        await createPaymentCommunityPost(
+          {
+            amount: invoiceAmount,
+            currency: paidInvoice.currency || invoice.currency || 'NGN',
+          },
+          freelancerId
+        );
+        console.log(`[Paystack Webhook] Community post created for invoice ${invoiceId}`);
+      } catch (communityErr) {
+        console.error(
+          '[Paystack Webhook] Community post failed:',
+          communityErr.message
+        );
+      }
     }
 
     const freelancerPhone = paidInvoice.freelancer_phone || invoice.freelancer_phone;

@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { createAndSendInvoice } = require('../services/invoiceService');
-const { createPaymentLink } = require('../services/paymentProvider');
+const {
+  createPaymentLink,
+  PAYO_PAYSTACK_FALLBACK_EMAIL,
+} = require('../services/paymentProvider');
 const supabase = require('../supabase');
 
 router.post('/create', async (req, res) => {
@@ -69,11 +72,12 @@ router.post('/pay/:invoiceId', async (req, res) => {
     const currency = (invoice.currency || 'NGN').toUpperCase();
     const { paymentUrl, reference, provider } = await createPaymentLink({
       currency,
-      clientEmail: invoice.client_email,
+      clientEmail: invoice.client_email || PAYO_PAYSTACK_FALLBACK_EMAIL,
       amount: invoice.amount,
       invoiceId: invoice.id,
       clientName: invoice.client_name,
       description: invoice.project_description,
+      freelancerId: invoice.freelancer_id,
     });
 
     const { data: updatedInvoice, error: updateError } = await supabase

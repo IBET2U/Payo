@@ -87,6 +87,27 @@ Rules:
   return message.content[0].text;
 }
 
+function extractJson(text) {
+  const cleaned = text
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  const matches = cleaned.match(/\{[\s\S]*\}/g);
+  if (!matches) return null;
+
+  const sorted = matches.sort((a, b) => b.length - a.length);
+  for (const match of sorted) {
+    try {
+      const parsed = JSON.parse(match);
+      if (parsed.intent) return parsed;
+    } catch (e) {
+      continue;
+    }
+  }
+  return null;
+}
+
 async function parseChatIntent(userMessage, conversationHistory = []) {
   const historyMessages = conversationHistory.map((m) => ({
     role: m.role === 'assistant' ? 'assistant' : 'user',
@@ -148,49 +169,24 @@ Respond with ONLY valid JSON, no markdown:
   });
 
   const text = message.content[0].text.trim();
-  console.log('[CLAUDE PARSE] raw response:', text);
-
-  const safeDefault = {
-    intent: 'general',
-    extracted: {},
-    reply: 'Sorry, e do small. Try again.',
-  };
-
-  const jsonMatches = text.match(/\{[\s\S]*\}/g);
-  if (!jsonMatches || jsonMatches.length === 0) {
-    console.error('[CLAUDE PARSE] No JSON object found in response');
-    return safeDefault;
+  console.log('[CLAUDE RAW]', text.substring(0, 200));
+  const parsed = extractJson(text);
+  if (!parsed) {
+    return {
+      intent: 'general',
+      extracted: {},
+      reply:
+        'E do small. Try again — tell me who you wan invoice and how much dem owe you.',
+    };
   }
 
-  const jsonStr = jsonMatches[jsonMatches.length - 1];
-
-  let parsed;
-  try {
-    parsed = JSON.parse(jsonStr);
-  } catch (err) {
-    console.error('[CLAUDE PARSE] JSON.parse failed:', err.message, 'candidate:', jsonStr);
-    return safeDefault;
-  }
-
-  if (!parsed || typeof parsed !== 'object') {
-    return safeDefault;
-  }
-
-  if (!parsed.intent) {
-    parsed.intent = 'general';
-  }
   if (!parsed.extracted || typeof parsed.extracted !== 'object') {
     parsed.extracted = {};
   }
-  if (!parsed.reply) {
-    parsed.reply = safeDefault.reply;
-  }
 
-  if (parsed.extracted) {
-    const inferred = inferCurrencyFromText(userMessage);
-    if (inferred) {
-      parsed.extracted.currency = inferred;
-    }
+  const inferred = inferCurrencyFromText(userMessage);
+  if (inferred) {
+    parsed.extracted.currency = inferred;
   }
 
   return parsed;

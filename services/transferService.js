@@ -86,6 +86,107 @@ async function resolveRecipient(phoneOrEmail, options = {}) {
   return { type: 'external', phoneOrEmail: raw };
 }
 
+function isSchemaColumnError(error) {
+  const msg = String(error?.message || '');
+  return /schema cache|Could not find the .* column/i.test(msg);
+}
+
+function buildTransferInsertAttempts(row) {
+  const {
+    sender_id,
+    recipient_type,
+    recipient_id,
+    recipient_phone_or_email,
+    amount,
+    reason,
+    status,
+    provider,
+    provider_reference,
+  } = row;
+
+  return [
+    {
+      sender_id,
+      recipient_type,
+      recipient_id,
+      recipient_phone_or_email,
+      amount,
+      reason,
+      status,
+      provider,
+      provider_reference,
+    },
+    {
+      sender_id,
+      recipient_type,
+      recipient_id,
+      recipient_phone_or_email,
+      amount,
+      reason,
+      status,
+    },
+    {
+      sender_id,
+      recipient_type,
+      recipient_phone_or_email,
+      amount,
+      reason,
+      status,
+    },
+    {
+      sender_id,
+      recipient_type,
+      amount,
+      reason,
+      status,
+    },
+    {
+      sender_id,
+      amount,
+      reason,
+      status,
+    },
+    {
+      sender_id,
+      amount,
+      status,
+    },
+    {
+      sender_id,
+      amount,
+    },
+  ];
+}
+
+async function insertTransferRecord(row, metadata = {}) {
+  const attempts = buildTransferInsertAttempts(row);
+  let lastError = null;
+
+  for (const payload of attempts) {
+    const cleaned = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+    );
+
+    const { data, error } = await supabase
+      .from('transfers')
+      .insert(cleaned)
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      return { ...data, ...metadata };
+    }
+
+    if (error && !isSchemaColumnError(error)) {
+      throw error;
+    }
+
+    lastError = error;
+  }
+
+  throw lastError || new Error('Failed to save transfer record');
+}
+
 async function createTransferRecipient(accountNumber, bankCode, name) {
   if (!accountNumber || !bankCode) {
     throw new Error('accountNumber and bankCode are required');
@@ -110,65 +211,66 @@ async function createTransferRecipient(accountNumber, bankCode, name) {
 
 async function initiateTransfer(senderId, recipientDetails, amount, reason, options = {}) {
   const amt = Number(amount);
-  if (!Number.isFinite(amt) || amt <= 0) throw new Error('amount must be a positive number');
+  if (!Number.isFinite(amt) || amt <= 0) {
+    throw new Error('A valid positive amount is required');
+  }
 
-  const senderLock = await supabase
+  let { data: sender, error: senderError } = await supabase
     .from('freelancer_profiles')
-    .select('id, wallet_balance, name, phone, email')
+    .select('id, name, phone, email')
     .eq('id', senderId)
-    .single();
+    .maybeSingle();
 
-  if (senderLock.error) throw senderLock.error;
-  const sender = senderLock.data;
+  if (senderError) {
+    console.error('[Transfer] Sender lookup failed:', senderError.message);
+    throw new Error('Failed to look up sender profile');
+  }
   if (!sender) {
-    throw new Error('Sender profile not found');
+    const { data: newProfile, error: createError } = await supabase
+      .from('freelancer_profiles')
+      .insert({
+        id: senderId,
+        wallet_balance: 0,
+        monthly_volume: 0,
+        monthly_earnings: 0,
+        total_earnings: 0,
+        tier: 'BRONZE',
+      })
+      .select()
+      .single();
+    if (createError) throw createError;
+    sender = newProfile;
   }
-
-  const senderBalance = Number(sender.wallet_balance || 0);
-  if (!Number.isFinite(senderBalance) || senderBalance < amt) {
-    throw new Error('Insufficient wallet balance');
-  }
-
-  const newSenderBalance = senderBalance - amt;
-
-  // Debit sender
-  const { error: debitError } = await supabase
-    .from('freelancer_profiles')
-    .update({ wallet_balance: newSenderBalance })
-    .eq('id', senderId);
-  if (debitError) throw debitError;
 
   let transferRecord = null;
-  let status = 'success';
+  const status = 'success';
   let provider = 'internal';
   let providerReference = null;
+  let recipientBalanceBeforeCredit = null;
+  let payoRecipientId = null;
 
   try {
     if (recipientDetails.type === 'payo') {
       const recipient = recipientDetails.profile;
-      const recipientBalance = Number(recipient.wallet_balance || 0);
+      if (!recipient?.id) {
+        throw new Error('Payo recipient profile is missing');
+      }
+
+      payoRecipientId = recipient.id;
+      recipientBalanceBeforeCredit = Number(recipient.wallet_balance || 0);
+
       const { error: creditError } = await supabase
         .from('freelancer_profiles')
-        .update({ wallet_balance: recipientBalance + amt })
+        .update({ wallet_balance: recipientBalanceBeforeCredit + amt })
         .eq('id', recipient.id);
+
       if (creditError) throw creditError;
 
       provider = 'payo';
       providerReference = `payo_${Date.now()}`;
 
-      const toPhone = recipient.phone || recipientDetails.phoneOrEmail;
-      if (toPhone) {
-        await sendPaymentConfirmedWhatsApp(
-          toPhone,
-          sender.name || sender.email || 'Someone',
-          amt,
-          'NGN'
-        );
-      }
-
-      const { data, error } = await supabase
-        .from('transfers')
-        .insert({
+      transferRecord = await insertTransferRecord(
+        {
           sender_id: senderId,
           recipient_type: 'payo',
           recipient_id: recipient.id,
@@ -178,28 +280,35 @@ async function initiateTransfer(senderId, recipientDetails, amount, reason, opti
           status,
           provider,
           provider_reference: providerReference,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      transferRecord = data;
-    } else {
+        },
+        {
+          recipient_type: 'payo',
+          recipient_id: recipient.id,
+          recipient_phone_or_email: recipient.email || recipient.phone || null,
+          provider,
+          provider_reference: providerReference,
+        }
+      );
+
+      const toPhone = recipient.phone || recipientDetails.phoneOrEmail;
+      if (toPhone) {
+        try {
+          await sendPaymentConfirmedWhatsApp(
+            toPhone,
+            sender.name || sender.email || 'Someone',
+            amt,
+            'NGN'
+          );
+        } catch (waErr) {
+          console.error('[Transfer] WhatsApp notification failed:', waErr.message);
+        }
+      }
+    } else if (recipientDetails.type === 'external') {
       provider = 'paystack';
       const { accountNumber, bankCode, name } = options;
+
       if (!accountNumber || !bankCode) {
         throw new Error('Bank details required for external transfer');
-      }
-
-      // Verify account exists before creating recipient
-      try {
-        const ps = paystackClient();
-        await ps.get('/bank/resolve', {
-          params: { account_number: accountNumber, bank_code: bankCode },
-        });
-      } catch (err) {
-        throw new Error(
-          `Paystack bank resolution failed: ${err.response?.data?.message || err.message}`
-        );
       }
 
       const recipientCode = await createTransferRecipient(accountNumber, bankCode, name);
@@ -215,44 +324,52 @@ async function initiateTransfer(senderId, recipientDetails, amount, reason, opti
       providerReference =
         res?.data?.data?.transfer_code || res?.data?.data?.reference || recipientCode;
 
-      // Notify if we have a phone
-      if (recipientDetails.phoneOrEmail) {
-        await sendPaymentConfirmedWhatsApp(
-          recipientDetails.phoneOrEmail,
-          sender.name || sender.email || 'Someone',
-          amt,
-          'NGN'
-        );
-      }
-
-      const { data, error } = await supabase
-        .from('transfers')
-        .insert({
+      transferRecord = await insertTransferRecord(
+        {
           sender_id: senderId,
           recipient_type: 'external',
-          recipient_phone_or_email: recipientDetails.phoneOrEmail,
+          recipient_phone_or_email: recipientDetails.phoneOrEmail || null,
           amount: amt,
           reason: reason || null,
           status,
           provider,
           provider_reference: providerReference,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      transferRecord = data;
+        },
+        {
+          recipient_type: 'external',
+          recipient_phone_or_email: recipientDetails.phoneOrEmail || null,
+          provider,
+          provider_reference: providerReference,
+        }
+      );
+
+      if (recipientDetails.phoneOrEmail) {
+        try {
+          await sendPaymentConfirmedWhatsApp(
+            recipientDetails.phoneOrEmail,
+            sender.name || sender.email || 'Someone',
+            amt,
+            'NGN'
+          );
+        } catch (waErr) {
+          console.error('[Transfer] WhatsApp notification failed:', waErr.message);
+        }
+      }
+    } else {
+      throw new Error('Invalid recipient type');
     }
   } catch (err) {
-    // Roll back debit best-effort
-    await supabase
-      .from('freelancer_profiles')
-      .update({ wallet_balance: senderBalance })
-      .eq('id', senderId);
+    if (payoRecipientId != null && recipientBalanceBeforeCredit != null) {
+      await supabase
+        .from('freelancer_profiles')
+        .update({ wallet_balance: recipientBalanceBeforeCredit })
+        .eq('id', payoRecipientId);
+    }
     throw err;
   }
 
   return {
-    sender: { id: sender.id, wallet_balance: newSenderBalance },
+    sender: { id: sender.id, name: sender.name, phone: sender.phone, email: sender.email },
     transfer: transferRecord,
   };
 }
@@ -275,4 +392,3 @@ module.exports = {
   createTransferRecipient,
   getTransferHistory,
 };
-

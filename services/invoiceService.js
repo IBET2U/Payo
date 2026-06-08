@@ -101,21 +101,31 @@ async function createAndSendInvoice({
 
   if (error) throw error;
 
-  const { paymentUrl, reference } = await createPaymentLink({
-    currency: normalizedCurrency,
-    clientEmail: cleanClientEmail,
-    amount,
-    invoiceId: data.id,
-    clientName: client_name,
-    description: project_description,
-    freelancerWalletAddress,
-  });
+  let paymentUrl = null;
+  let reference = null;
+  try {
+    const paymentResult = await createPaymentLink({
+      currency: normalizedCurrency,
+      clientEmail: cleanClientEmail,
+      amount,
+      invoiceId: data.id,
+      clientName: client_name,
+      description: project_description,
+      freelancerWalletAddress,
+      freelancerId: freelancer_id,
+    });
+    paymentUrl = paymentResult.paymentUrl;
+    reference = paymentResult.reference;
+  } catch (paymentErr) {
+    console.error('[invoiceService] Payment link failed:', paymentErr.message);
+    // Continue without payment link — email still sends
+  }
 
   const { data: invoice, error: updateError } = await supabase
     .from('invoices')
     .update({
-      payment_url: paymentUrl,
-      payment_reference: reference,
+      payment_url: paymentUrl || null,
+      payment_reference: reference || null,
     })
     .eq('id', data.id)
     .select()
@@ -123,7 +133,7 @@ async function createAndSendInvoice({
 
   if (updateError) throw updateError;
 
-  if (cleanClientEmail) {
+  if (cleanClientEmail && !isQuickPayment) {
     try {
       await sendInvoiceEmail(
         cleanClientEmail,

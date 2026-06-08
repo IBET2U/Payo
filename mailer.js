@@ -30,7 +30,7 @@ async function sendInvoiceEmail(
     : '';
 
   const { data, error } = await resend.emails.send({
-    from: 'Payo <onboarding@resend.dev>',
+    from: 'Payo <invoices@payoapp.org>',
     to: clientEmail,
     subject: `Invoice for ${display} — Due ${dueDate}`,
     html: `
@@ -72,7 +72,7 @@ async function sendFollowUpEmail(
   const body = enforceCurrencyInInvoiceBody(followUpContent, normalizedCurrency, amount);
 
   const { data, error } = await resend.emails.send({
-    from: 'Payo <onboarding@resend.dev>',
+    from: 'Payo <invoices@payoapp.org>',
     to: clientEmail,
     subject: `Following up on your invoice — ${display} due ${dueDate}`,
     html: `
@@ -118,7 +118,7 @@ async function sendPaymentConfirmationEmail(
   });
 
   const { data, error } = await resend.emails.send({
-    from: 'Payo <onboarding@resend.dev>',
+    from: 'Payo <invoices@payoapp.org>',
     to: freelancerEmail,
     subject: 'You just got paid! 🎉',
     html: `
