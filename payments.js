@@ -26,6 +26,7 @@ async function initializePayment({
   currency = 'NGN',
   subaccount,
   bearer,
+  transaction_charge,
 }) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
@@ -53,6 +54,9 @@ async function initializePayment({
   if (subaccount) {
     payload.subaccount = subaccount;
     payload.bearer = bearer || 'subaccount';
+    if (transaction_charge !== undefined && transaction_charge !== null) {
+      payload.transaction_charge = transaction_charge;
+    }
   }
 
   const response = await fetch(`${PAYSTACK_API}/transaction/initialize`, {

@@ -31,6 +31,29 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/verify-bank', async (req, res) => {
+  try {
+    const { account_number, bank_code } = req.query;
+    const result = await verifyBankAccount(account_number, bank_code);
+
+    if (!result?.account_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not verify account. Check account number and bank.',
+      });
+    }
+
+    res.json({
+      success: true,
+      account_name: result.account_name,
+      account_number: result.account_number,
+    });
+  } catch (error) {
+    console.error('[Profile] Verify bank error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/banks', async (req, res) => {
   try {
     const banks = await getBanks();
@@ -50,6 +73,13 @@ router.post('/bank/verify', async (req, res) => {
 
     const { account_number, bank_code } = req.body || {};
     const result = await verifyBankAccount(account_number, bank_code);
+
+    if (!result?.account_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not verify account. Check account number and bank.',
+      });
+    }
 
     res.json({
       success: true,
@@ -72,19 +102,26 @@ router.post('/bank', async (req, res) => {
     const { bank_code, account_number, business_name } = req.body || {};
     const existing = await getProfile(userId);
 
+    const verified = await verifyBankAccount(account_number, bank_code);
+    if (!verified?.account_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not verify bank account. Please verify before saving.',
+      });
+    }
+
     const result = await createSubaccount(userId, {
-      bankCode: bank_code,
       accountNumber: account_number,
+      bankCode: bank_code,
       businessName: business_name,
-      freelancerEmail:
-        existing?.email || req.auth?.sessionClaims?.email || null,
-      accountName: req.body?.account_name || null,
+      email: existing?.email || req.auth?.sessionClaims?.email || null,
     });
 
     res.json({
       success: true,
       subaccount_code: result.subaccount_code,
       account_name: result.account_name,
+      bank_name: result.bank_name,
       profile: result.profile,
       has_bank: true,
     });

@@ -25,7 +25,7 @@ function paystackErrorMessage(err) {
 async function getBanks() {
   const ps = paystackClient();
   const { data } = await ps.get('/bank', {
-    params: { country: 'nigeria', perPage: 100 },
+    params: { currency: 'NGN', perPage: 100 },
   });
 
   if (!data?.status) {
@@ -39,69 +39,73 @@ async function getBanks() {
 }
 
 async function verifyBankAccount(accountNumber, bankCode) {
-  const acct = String(accountNumber || '').trim();
-  const code = String(bankCode || '').trim();
+  try {
+    const acct = String(accountNumber || '').trim();
+    const code = String(bankCode || '').trim();
 
-  if (!acct || !code) {
-    throw new Error('account_number and bank_code are required');
+    if (!acct || !code) {
+      return null;
+    }
+
+    const ps = paystackClient();
+    const { data } = await ps.get('/bank/resolve', {
+      params: {
+        account_number: acct,
+        bank_code: code,
+      },
+    });
+
+    if (!data?.status || !data.data?.account_name) {
+      return null;
+    }
+
+    return {
+      account_name: data.data.account_name,
+      account_number: data.data.account_number || acct,
+    };
+  } catch (err) {
+    console.warn('[Subaccount] verifyBankAccount failed:', paystackErrorMessage(err));
+    return null;
   }
-
-  const ps = paystackClient();
-  const { data } = await ps.get('/bank/resolve', {
-    params: {
-      account_number: acct,
-      bank_code: code,
-    },
-  });
-
-  if (!data?.status) {
-    throw new Error(data?.message || 'Could not verify account');
-  }
-
-  return {
-    account_name: data.data?.account_name || null,
-    account_number: data.data?.account_number || acct,
-    bank_id: data.data?.bank_id || null,
-  };
 }
 
-async function createSubaccount(userId, bankDetails = {}) {
-  const bankCode = String(bankDetails.bankCode || bankDetails.bank_code || '').trim();
-  const accountNumber = String(
-    bankDetails.accountNumber || bankDetails.account_number || ''
-  ).trim();
-  const businessName = String(
-    bankDetails.businessName || bankDetails.business_name || ''
-  ).trim();
+async function createSubaccount(userId, { accountNumber, bankCode, businessName, email }) {
+  const account_number = String(accountNumber || '').trim();
+  const bank_code = String(bankCode || '').trim();
+  const business_name = String(businessName || '').trim();
 
-  if (!bankCode || !accountNumber) {
+  if (!bank_code || !account_number) {
     throw new Error('bank_code and account_number are required');
   }
 
   const profile = await getProfile(userId);
-  const freelancerName =
-    businessName || profile?.name || profile?.business_name || 'Payo Freelancer';
-  const freelancerEmail =
-    bankDetails.freelancerEmail ||
-    bankDetails.email ||
-    profile?.email ||
-    null;
+  const freelancerEmail = email || profile?.email || null;
 
   if (!freelancerEmail) {
     throw new Error('Freelancer email is required to create a subaccount');
   }
 
-  let accountName = bankDetails.accountName || bankDetails.account_name || null;
-  if (!accountName) {
-    const verified = await verifyBankAccount(accountNumber, bankCode);
-    accountName = verified.account_name;
+  const resolvedBusinessName =
+    business_name || profile?.business_name || profile?.name || 'Payo Freelancer';
+
+  const verified = await verifyBankAccount(account_number, bank_code);
+  if (!verified?.account_name) {
+    throw new Error('Could not verify bank account. Check account number and bank.');
+  }
+
+  let bankName = null;
+  try {
+    const banks = await getBanks();
+    bankName = banks.find((b) => b.code === bank_code)?.name || null;
+  } catch {
+    // non-fatal
   }
 
   const ps = paystackClient();
   const { data } = await ps.post('/subaccount', {
-    business_name: freelancerName,
-    settlement_bank: bankCode,
-    account_number: accountNumber,
+    business_name: resolvedBusinessName,
+    settlement_bank: bank_code,
+    account_number,
     percentage_charge: 99,
     primary_contact_email: freelancerEmail,
   });
@@ -110,8 +114,8 @@ async function createSubaccount(userId, bankDetails = {}) {
     throw new Error(data?.message || 'Failed to create Paystack subaccount');
   }
 
-  const subaccountCode = data.data?.subaccount_code;
-  if (!subaccountCode) {
+  const subaccount_code = data.data?.subaccount_code;
+  if (!subaccount_code) {
     throw new Error('Paystack did not return a subaccount_code');
   }
 
@@ -121,12 +125,13 @@ async function createSubaccount(userId, bankDetails = {}) {
       {
         id: userId,
         email: freelancerEmail,
-        name: profile?.name || freelancerName,
-        business_name: freelancerName,
-        subaccount_code: subaccountCode,
-        bank_code: bankCode,
-        bank_account_number: accountNumber,
-        bank_account_name: accountName,
+        name: profile?.name || resolvedBusinessName,
+        business_name: resolvedBusinessName,
+        subaccount_code,
+        bank_code,
+        bank_name: bankName,
+        bank_account_number: account_number,
+        bank_account_name: verified.account_name,
       },
       { onConflict: 'id' }
     )
@@ -136,8 +141,9 @@ async function createSubaccount(userId, bankDetails = {}) {
   if (error) throw error;
 
   return {
-    subaccount_code: subaccountCode,
-    account_name: accountName,
+    subaccount_code,
+    account_name: verified.account_name,
+    bank_name: bankName,
     profile: updatedProfile,
   };
 }

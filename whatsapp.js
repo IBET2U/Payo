@@ -287,6 +287,36 @@ Your tier resets to BRONZE this month. Every payment counts — let's go! 💚
   return sendWhatsAppMessage(freelancerPhone, body, 'Monthly earnings summary (detailed)');
 }
 
+async function sendCheckoutDownloadWhatsApp(
+  customerPhone,
+  customerName,
+  productName,
+  downloadUrl,
+  sellerName
+) {
+  const name = customerName || 'there';
+  const body = `Hi ${name}! Your ${productName} is ready 🎉
+Download here: ${downloadUrl}
+Link expires in 48 hours. Enjoy! — ${sellerName} via Payo`;
+
+  return sendWhatsAppMessage(customerPhone, body, 'Checkout download');
+}
+
+async function sendCheckoutSaleWhatsApp(
+  sellerPhone,
+  customerName,
+  amountDisplay,
+  productName,
+  isDigital
+) {
+  const digitalNote = isDigital
+    ? '\nDownload link sent to customer automatically ✓'
+    : '';
+  const body = `🛒 New sale! ${customerName} just paid ${amountDisplay} for ${productName}.${digitalNote}`;
+
+  return sendWhatsAppMessage(sellerPhone, body, 'Checkout sale');
+}
+
 module.exports = {
   sendInvoiceWhatsApp,
   sendFollowUpWhatsApp,
@@ -296,5 +326,7 @@ module.exports = {
   sendTierProgressReminder,
   sendMonthlyEarningsCreditedWhatsApp,
   sendMonthlyEarningsSummaryWhatsApp,
+  sendCheckoutDownloadWhatsApp,
+  sendCheckoutSaleWhatsApp,
   normalizeNigerianPhone,
 };

@@ -322,6 +322,83 @@
       grid-template-columns:1fr 1fr;
       gap:10px;
     }
+    .actionGridRow.cols3{
+      grid-template-columns:1fr 1fr 1fr;
+    }
+    .toggleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .toggleRow:last-child{border-bottom:none}
+    .toggleLabel{font-weight:700;font-size:14px}
+    .toggleSub{font-size:12px;color:var(--muted);margin-top:2px}
+    .toggle{
+      position:relative;
+      width:48px;height:28px;
+      flex-shrink:0;
+    }
+    .toggle input{opacity:0;width:0;height:0}
+    .toggleSlider{
+      position:absolute;inset:0;
+      background:#2a3942;
+      border-radius:28px;
+      cursor:pointer;
+      transition:background .2s;
+    }
+    .toggleSlider:before{
+      content:'';
+      position:absolute;
+      width:22px;height:22px;
+      left:3px;top:3px;
+      background:#fff;
+      border-radius:50%;
+      transition:transform .2s;
+    }
+    .toggle input:checked + .toggleSlider{background:var(--primary)}
+    .toggle input:checked + .toggleSlider:before{transform:translateX(20px)}
+    .typeToggle{
+      display:flex;
+      gap:8px;
+      margin-bottom:14px;
+    }
+    .typeToggle button{
+      flex:1;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#14222a;
+      color:var(--muted);
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .typeToggle button.active{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+    .vatPreview{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:8px;
+      padding:10px;
+      background:#121f27;
+      border-radius:12px;
+    }
+    .checkoutBadge{
+      display:inline-block;
+      font-size:11px;
+      font-weight:800;
+      padding:3px 8px;
+      border-radius:8px;
+      margin-left:6px;
+    }
+    .checkoutBadge.digital{background:rgba(212,160,23,.2);color:#d4a017}
+    .checkoutBadge.physical{background:rgba(0,168,132,.15);color:var(--primary)}
+    .checkoutBadge.sales{background:rgba(34,197,94,.15);color:var(--ok)}
     .action{
       padding:14px 12px;
       border-radius:16px;
@@ -1452,6 +1529,32 @@
       return userProfile;
     }
 
+    function getClerkUserId() {
+      return window.Clerk?.user?.id || null;
+    }
+
+    function markProfileSetupDone(userId) {
+      if (userId) localStorage.setItem('payoSetupDone_' + userId, 'true');
+    }
+
+    function isProfileSetupDone(userId) {
+      if (!userId) return false;
+      return localStorage.getItem('payoSetupDone_' + userId) === 'true';
+    }
+
+    function showMainApp() {
+      freelancer = getFreelancerFromClerk();
+      if (freelancer) avatarEl.textContent = initials(freelancer.name);
+      authScreen.classList.add('hidden');
+      appEl.classList.remove('hidden');
+      const route = window.location.hash.replace('#', '') || 'home';
+      if (route.startsWith('profile-setup')) {
+        navTo('home');
+      } else if (!isUserTyping()) {
+        safeRender(true);
+      }
+    }
+
     function profileSetupStep(profile) {
       const p = profile || userProfile;
       if (!p?.wallet_address || !String(p.wallet_address).trim()) return 'wallet';
@@ -1460,6 +1563,13 @@
     }
 
     async function ensureProfileSetup() {
+      const userId = getClerkUserId();
+      if (!userId) return false;
+
+      if (isProfileSetupDone(userId)) {
+        return false;
+      }
+
       try {
         const profile = await fetchProfile();
         const step = profileSetupStep(profile);
@@ -1472,6 +1582,23 @@
         console.warn('[Payo] Profile setup check failed:', err.message);
       }
       return false;
+    }
+
+    async function onClerkSignedIn(user) {
+      freelancer = getFreelancerFromClerk();
+      avatarEl.textContent = initials(freelancer.name);
+      authScreen.classList.add('hidden');
+      appEl.classList.remove('hidden');
+
+      const userId = user.id;
+      const setupDone = localStorage.getItem('payoSetupDone_' + userId);
+      if (setupDone) {
+        showMainApp();
+        return;
+      }
+
+      const redirected = await ensureProfileSetup();
+      if (!redirected && !isUserTyping()) safeRender(true);
     }
 
     async function loadBanksIntoSelect(selectEl, selectedCode) {
@@ -1549,6 +1676,9 @@
       if (route.startsWith('collect')) return renderCollectFlow(route || 'collect');
       if (route.startsWith('global')) return renderGlobalFlow(route);
       if (route.startsWith('quick')) return renderQuickLinkFlow(route);
+      if (route.startsWith('checkout-orders')) return renderCheckoutOrders(route);
+      if (route === 'checkouts') return renderMyCheckouts();
+      if (route.startsWith('checkout')) return renderCheckoutFlow(route);
       if (route === 'track') return renderTrack();
       if (route === 'community') return renderCommunity();
       if (route.startsWith('profile-setup')) return renderProfileSetup(route);
@@ -1634,33 +1764,38 @@
           </div>
 
           <div class="actionGrid">
-            <div class="actionGridRow">
+            <div class="actionGridRow cols3">
               <div class="action" id="actSend">
                 <div class="emoji">💸</div>
                 <div class="title">${t('sendMoney')}</div>
-                <div class="sub">${getLang()==='pid'?'Send quick to phone/email':'Send to phone/email'}</div>
+                <div class="sub">${getLang()==='pid'?'Send quick':'Send money'}</div>
               </div>
               <div class="action" id="actBill">
                 <div class="emoji">📩</div>
                 <div class="title">${t('sendBill')}</div>
-                <div class="sub">${getLang()==='pid'?'Create invoice':'Send invoice'}</div>
+                <div class="sub">${getLang()==='pid'?'Invoice':'Bill client'}</div>
               </div>
               <div class="action" id="actCollect">
                 <div class="emoji">🤝</div>
                 <div class="title">${t('collectMoney')}</div>
-                <div class="sub">${getLang()==='pid'?'Send request':'Request payment'}</div>
+                <div class="sub">${getLang()==='pid'?'Request':'Collect'}</div>
               </div>
+            </div>
+            <div class="actionGridRow cols3">
               <div class="action" id="actGlobal">
                 <div class="emoji">🌍</div>
                 <div class="title">${t('globalPayment')}</div>
-                <div class="sub">${getLang()==='pid'?'For outside Nigeria':'Get paid in USD'}</div>
+                <div class="sub">USD</div>
               </div>
-            </div>
-            <div class="action quickLink" id="actQuickLink">
-              <div class="emoji">🔗</div>
-              <div class="quickLinkText">
+              <div class="action" id="actQuickLink">
+                <div class="emoji">🔗</div>
                 <div class="title">${t('quickLink')}</div>
-                <div class="sub">${t('quickLinkSub')}</div>
+                <div class="sub">${getLang()==='pid'?'Quick pay':'Pay link'}</div>
+              </div>
+              <div class="action" id="actCheckout">
+                <div class="emoji">🛒</div>
+                <div class="title">Checkout</div>
+                <div class="sub">Sell products</div>
               </div>
             </div>
           </div>
@@ -1686,6 +1821,7 @@
       document.getElementById('actCollect').onclick = () => navTo('collect');
       document.getElementById('actGlobal').onclick = () => navTo('global');
       document.getElementById('actQuickLink').onclick = () => navTo('quick');
+      document.getElementById('actCheckout').onclick = () => navTo('checkout/1');
       document.getElementById('topUpBtn').onclick = () => alert('Top up coming soon');
       document.getElementById('withdrawBtn').onclick = () => alert('Withdraw coming soon');
 
@@ -2692,7 +2828,10 @@
           </div>
         `;
 
-        document.getElementById('walletSkipBtn').onclick = () => navTo('profile-setup/bank');
+        document.getElementById('walletSkipBtn').onclick = () => {
+          markProfileSetupDone(window.Clerk.user.id);
+          showMainApp();
+        };
         document.getElementById('walletSaveBtn').onclick = async () => {
           const btn = document.getElementById('walletSaveBtn');
           const wallet = document.getElementById('walletInput').value.trim();
@@ -2727,7 +2866,7 @@
         <div class="screen" id="bankSetupScreen">
           <div class="sectionTitle">Receive Naira directly</div>
           <div class="muted" style="font-size:13px;margin-bottom:14px;line-height:1.4">
-            Step 2 of 2 — Link your Nigerian bank account. Client payments settle straight to you. Payo keeps 1%.
+            Add your Nigerian bank account to receive Naira payments directly. Client payments settle straight to you. Payo keeps 1%.
           </div>
           <div class="card" style="padding:14px">
             <div class="muted" style="font-size:12px;margin-bottom:8px">${t('selectBank')}</div>
@@ -2736,7 +2875,7 @@
             </select>
             <div style="height:10px"></div>
             <div class="muted" style="font-size:12px;margin-bottom:8px">${t('accountNumber')}</div>
-            <input class="input" id="setupAcctInput" inputmode="numeric" placeholder="${t('accountNumber')}" value="${escapeAttr(userProfile?.bank_account_number || '')}">
+            <input class="input" id="setupAcctInput" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${escapeAttr(userProfile?.bank_account_number || '')}">
             <div style="height:10px"></div>
             <div class="muted" style="font-size:12px;margin-bottom:8px">Business name on account</div>
             <input class="input" id="setupBusinessInput" placeholder="Your name or business" value="${escapeAttr(userProfile?.business_name || freelancer?.name || '')}">
@@ -2756,23 +2895,30 @@
 
       let verifiedAccountName = userProfile?.bank_account_name || null;
 
-      document.getElementById('bankSkipBtn').onclick = () => navTo('home');
+      document.getElementById('bankSkipBtn').onclick = () => {
+        markProfileSetupDone(window.Clerk.user.id);
+        showMainApp();
+      };
       document.getElementById('verifyBankBtn').onclick = async () => {
         const btn = document.getElementById('verifyBankBtn');
-        const bankCode = document.getElementById('setupBankSelect').value;
+        const bankSelect = document.getElementById('setupBankSelect');
+        const bankCode = bankSelect.value;
+        const bankName = bankSelect.selectedOptions[0]?.text || 'Bank';
         const accountNumber = document.getElementById('setupAcctInput').value.trim();
         if (!bankCode || !accountNumber) return alert(t('error'));
+        if (!/^\d{10}$/.test(accountNumber)) return alert('Enter a valid 10-digit account number');
         try {
           btn.disabled = true;
-          const res = await fetch('/profile/bank/verify', {
-            method: 'POST',
-            headers: await getAuthHeaders(),
-            body: JSON.stringify({ bank_code: bankCode, account_number: accountNumber }),
+          const qs = new URLSearchParams({
+            account_number: accountNumber,
+            bank_code: bankCode,
           });
+          const res = await fetch(`/profile/verify-bank?${qs.toString()}`);
           const j = await res.json();
           if (!res.ok || !j.success) throw new Error(j.error || 'Verification failed');
           verifiedAccountName = j.account_name;
-          document.getElementById('verifiedNameText').textContent = j.account_name || '—';
+          document.getElementById('verifiedNameText').textContent =
+            `✓ ${j.account_name} — ${bankName}`;
           document.getElementById('verifiedNameBox').classList.remove('hidden');
         } catch (err) {
           alert(err.message || t('error'));
@@ -2787,6 +2933,8 @@
         const accountNumber = document.getElementById('setupAcctInput').value.trim();
         const businessName = document.getElementById('setupBusinessInput').value.trim();
         if (!bankCode || !accountNumber) return alert(t('error'));
+        if (!/^\d{10}$/.test(accountNumber)) return alert('Enter a valid 10-digit account number');
+        if (!verifiedAccountName) return alert('Please verify your account first');
         try {
           btn.disabled = true;
           const res = await fetch('/profile/bank', {
@@ -2796,7 +2944,6 @@
               bank_code: bankCode,
               account_number: accountNumber,
               business_name: businessName || freelancer?.name || null,
-              account_name: verifiedAccountName,
             }),
           });
           const j = await res.json();
@@ -2804,7 +2951,8 @@
           userProfile = j.profile;
           profileFlags.has_bank = true;
           alert('Bank account linked! Naira payments will go directly to your account.');
-          navTo('home');
+          markProfileSetupDone(window.Clerk.user.id);
+          showMainApp();
         } catch (err) {
           alert(err.message || t('error'));
         } finally {
@@ -2820,7 +2968,9 @@
           sel.innerHTML = `<option value="">${escapeHtml(err.message)}</option>`;
         }
         if (userProfile?.bank_account_name) {
-          document.getElementById('verifiedNameText').textContent = userProfile.bank_account_name;
+          const bankLabel = userProfile.bank_name || sel.selectedOptions[0]?.text || 'Bank';
+          document.getElementById('verifiedNameText').textContent =
+            `✓ ${userProfile.bank_account_name} — ${bankLabel}`;
           document.getElementById('verifiedNameBox').classList.remove('hidden');
         }
       })();
@@ -2828,11 +2978,401 @@
       wireFormInputs(document.getElementById('bankSetupScreen'));
     }
 
+    function renderCheckoutFlow(route) {
+      setActiveTab('home');
+      const step = (route || 'checkout').split('/')[1] || '1';
+
+      if (step === 'success') {
+        const receipt = JSON.parse(sessionStorage.getItem('checkoutReceipt') || '{}');
+        const url = receipt.url || '';
+        host.innerHTML = `
+          <div class="screen">
+            <div class="center" style="padding-top:20px">
+              <div class="check">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+              </div>
+              <div style="font-weight:1000;font-size:20px">Your checkout is live! 🎉</div>
+              <div class="muted" style="margin-top:8px;font-size:13px">Share this link with buyers</div>
+              <div class="linkUrlBox" id="checkoutUrlText">${escapeHtml(url)}</div>
+              <button type="button" class="btn copyLarge" id="copyCheckoutBtn">COPY LINK</button>
+              <button type="button" class="btn waShare" id="waCheckoutBtn">Share on WhatsApp</button>
+              <a class="createAnother" id="checkoutAnother" href="#">Create another</a>
+              <a class="createAnother" id="viewCheckouts" href="#" style="margin-top:8px;display:block">View my checkouts</a>
+            </div>
+          </div>
+        `;
+        document.getElementById('copyCheckoutBtn').onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(url);
+            alert('Link copied!');
+          } catch { alert(t('error')); }
+        };
+        document.getElementById('waCheckoutBtn').onclick = () => {
+          const text = `Check out my product and buy here: ${url}`;
+          window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        };
+        document.getElementById('checkoutAnother').onclick = (e) => {
+          e.preventDefault();
+          sessionStorage.removeItem('checkoutFlow');
+          sessionStorage.removeItem('checkoutReceipt');
+          navTo('checkout/1');
+        };
+        document.getElementById('viewCheckouts').onclick = (e) => {
+          e.preventDefault();
+          navTo('checkouts');
+        };
+        return;
+      }
+
+      const state = JSON.parse(sessionStorage.getItem('checkoutFlow') || '{}');
+      const cur = state.currency || 'NGN';
+
+      if (step === '1') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">Create Checkout — Step 1</div>
+            <div class="card" style="padding:14px">
+              <div class="muted" style="font-size:12px;margin-bottom:8px">Product name</div>
+              <input class="input" id="coName" placeholder="e.g. Brand Kit Bundle" value="${escapeAttr(state.product_name || '')}">
+              <div class="curToggle" id="curToggle" style="margin-top:12px">
+                <button type="button" data-cur="NGN" class="${cur === 'NGN' ? 'active' : ''}">₦ NGN</button>
+                <button type="button" data-cur="USD" class="${cur === 'USD' ? 'active' : ''}">$ USD</button>
+              </div>
+              <input class="input quickAmountInput" id="coPrice" inputmode="decimal" placeholder="${cur === 'USD' ? '$0' : '₦0'}" value="${state.price || ''}">
+              <div class="muted" style="font-size:12px;margin-top:12px;margin-bottom:8px">Description</div>
+              <textarea class="input" id="coDesc" rows="3" placeholder="What's included?">${escapeHtml(state.description || '')}</textarea>
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="coBack1">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="coNext1">Next</button>
+              </div>
+            </div>
+          </div>
+        `;
+        let selectedCur = cur;
+        host.querySelectorAll('#curToggle button').forEach((btn) => {
+          btn.onclick = () => {
+            selectedCur = btn.dataset.cur;
+            host.querySelectorAll('#curToggle button').forEach((b) => {
+              b.classList.toggle('active', b.dataset.cur === selectedCur);
+            });
+            document.getElementById('coPrice').placeholder = selectedCur === 'USD' ? '$0' : '₦0';
+          };
+        });
+        document.getElementById('coBack1').onclick = () => navTo('home');
+        document.getElementById('coNext1').onclick = () => {
+          const name = document.getElementById('coName').value.trim();
+          const price = parseAmount(document.getElementById('coPrice').value);
+          if (!name) return alert('Enter a product name');
+          if (!Number.isFinite(price) || price <= 0) return alert('Enter a valid price');
+          state.product_name = name;
+          state.price = document.getElementById('coPrice').value;
+          state.currency = selectedCur;
+          state.description = document.getElementById('coDesc').value.trim();
+          sessionStorage.setItem('checkoutFlow', JSON.stringify(state));
+          navTo('checkout/2');
+        };
+        wireFormInputs(host);
+        return;
+      }
+
+      if (step === '2') {
+        const isDigital = state.is_digital === true;
+        const addVat = !!state.add_vat;
+        const limitStock = !!state.limit_stock;
+        const priceNum = parseAmount(state.price);
+        const vatAmt = Math.round(priceNum * 0.075);
+        const totalAmt = Math.round(priceNum * 1.075);
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">Create Checkout — Step 2</div>
+            <div class="card" style="padding:14px">
+              <div class="typeToggle" id="typeToggle">
+                <button type="button" data-type="physical" class="${!isDigital ? 'active' : ''}">Physical product</button>
+                <button type="button" data-type="digital" class="${isDigital ? 'active' : ''}">Digital download</button>
+              </div>
+              <div id="digitalFields" class="${isDigital ? '' : 'hidden'}">
+                <div class="muted" style="font-size:12px;margin-bottom:8px">Paste your download URL</div>
+                <input class="input" id="coDownloadUrl" placeholder="Google Drive, Dropbox, direct link" value="${escapeAttr(state.download_url || '')}">
+                <div class="muted" style="font-size:11px;margin-top:6px;line-height:1.4">Make sure the link allows anyone with the link to download</div>
+              </div>
+              <div class="toggleRow" style="margin-top:14px">
+                <div>
+                  <div class="toggleLabel">Add Nigerian VAT (7.5%)</div>
+                  <div class="vatPreview" id="vatPreview">${addVat && priceNum ? `${formatAmount(priceNum, 'NGN')} + ${formatAmount(vatAmt, 'NGN')} = ${formatAmount(totalAmt, 'NGN')}` : 'VAT preview appears when enabled'}</div>
+                </div>
+                <label class="toggle"><input type="checkbox" id="coVat" ${addVat ? 'checked' : ''}><span class="toggleSlider"></span></label>
+              </div>
+              <div class="toggleRow">
+                <div><div class="toggleLabel">Limit stock</div></div>
+                <label class="toggle"><input type="checkbox" id="coStock" ${limitStock ? 'checked' : ''}><span class="toggleSlider"></span></label>
+              </div>
+              <input class="input ${limitStock ? '' : 'hidden'}" id="coStockLimit" type="number" min="1" placeholder="Number available" value="${state.stock_limit || ''}">
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="coBack2">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="coNext2">Next</button>
+              </div>
+            </div>
+          </div>
+        `;
+        let productType = isDigital ? 'digital' : 'physical';
+        host.querySelectorAll('#typeToggle button').forEach((btn) => {
+          btn.onclick = () => {
+            productType = btn.dataset.type;
+            host.querySelectorAll('#typeToggle button').forEach((b) => {
+              b.classList.toggle('active', b.dataset.type === productType);
+            });
+            document.getElementById('digitalFields').classList.toggle('hidden', productType !== 'digital');
+          };
+        });
+        const vatEl = document.getElementById('coVat');
+        const stockEl = document.getElementById('coStock');
+        const stockLimitEl = document.getElementById('coStockLimit');
+        const vatPreview = document.getElementById('vatPreview');
+        vatEl.onchange = () => {
+          if (vatEl.checked && priceNum) {
+            vatPreview.textContent = `${formatAmount(priceNum, 'NGN')} + ${formatAmount(vatAmt, 'NGN')} = ${formatAmount(totalAmt, 'NGN')}`;
+          } else {
+            vatPreview.textContent = 'VAT preview appears when enabled';
+          }
+        };
+        stockEl.onchange = () => {
+          stockLimitEl.classList.toggle('hidden', !stockEl.checked);
+        };
+        document.getElementById('coBack2').onclick = () => navTo('checkout/1');
+        document.getElementById('coNext2').onclick = () => {
+          state.is_digital = productType === 'digital';
+          state.download_url = document.getElementById('coDownloadUrl')?.value.trim() || '';
+          state.add_vat = vatEl.checked;
+          state.limit_stock = stockEl.checked;
+          state.stock_limit = stockEl.checked ? document.getElementById('coStockLimit').value : null;
+          if (state.is_digital && !state.download_url) {
+            return alert('Add a download URL for digital products');
+          }
+          sessionStorage.setItem('checkoutFlow', JSON.stringify(state));
+          navTo('checkout/3');
+        };
+        wireFormInputs(host);
+        return;
+      }
+
+      if (step === '3') {
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">Create Checkout — Step 3</div>
+            <div class="card" style="padding:14px">
+              <div class="toggleRow">
+                <div><div class="toggleLabel">Collect customer name</div></div>
+                <label class="toggle"><input type="checkbox" id="coCollectName" ${state.collect_name !== false ? 'checked' : ''}><span class="toggleSlider"></span></label>
+              </div>
+              <div class="toggleRow">
+                <div><div class="toggleLabel">Collect customer email</div></div>
+                <label class="toggle"><input type="checkbox" id="coCollectEmail" ${state.collect_email !== false ? 'checked' : ''}><span class="toggleSlider"></span></label>
+              </div>
+              <div class="toggleRow">
+                <div><div class="toggleLabel">Collect customer phone</div></div>
+                <label class="toggle"><input type="checkbox" id="coCollectPhone" ${state.collect_phone !== false ? 'checked' : ''}><span class="toggleSlider"></span></label>
+              </div>
+              <div class="muted" style="font-size:12px;margin:14px 0 8px">Custom thank you message (optional)</div>
+              <input class="input" id="coThankYou" placeholder="Thanks for your purchase!" value="${escapeAttr(state.thank_you_message || '')}">
+              <div class="row" style="margin-top:14px">
+                <button class="btn secondary" type="button" id="coBack3">${t('back')}</button>
+                <div class="spacer"></div>
+                <button class="btn" type="button" id="coCreate">Create Checkout</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('coBack3').onclick = () => navTo('checkout/2');
+        document.getElementById('coCreate').onclick = async () => {
+          const btn = document.getElementById('coCreate');
+          btn.disabled = true;
+          try {
+            const payload = {
+              product_name: state.product_name,
+              description: state.description || '',
+              price: parseAmount(state.price),
+              currency: state.currency || 'NGN',
+              is_digital: !!state.is_digital,
+              download_url: state.download_url || null,
+              add_vat: !!state.add_vat,
+              stock_limit: state.limit_stock ? Number(state.stock_limit) : null,
+              collect_name: document.getElementById('coCollectName').checked,
+              collect_email: document.getElementById('coCollectEmail').checked,
+              collect_phone: document.getElementById('coCollectPhone').checked,
+              thank_you_message: document.getElementById('coThankYou').value.trim() || null,
+            };
+            const res = await fetch('/checkout/create', {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify(payload),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to create checkout');
+            sessionStorage.setItem('checkoutReceipt', JSON.stringify({
+              url: j.checkout?.url || '',
+              slug: j.checkout?.slug,
+            }));
+            sessionStorage.removeItem('checkoutFlow');
+            navTo('checkout/success');
+          } catch (err) {
+            alert(err.message || t('error'));
+          } finally {
+            btn.disabled = false;
+          }
+        };
+        wireFormInputs(host);
+        return;
+      }
+
+      navTo('checkout/1');
+    }
+
+    function renderMyCheckouts() {
+      setActiveTab('home');
+      host.innerHTML = `
+        <div class="screen">
+          <div class="sectionTitle">My Checkouts</div>
+          <div class="list" id="checkoutsList">
+            <div class="item"><div class="meta"><div class="name">${t('loading')}</div></div></div>
+          </div>
+          <button class="btn" type="button" id="newCheckoutBtn" style="width:100%;margin-top:12px">+ Create Checkout</button>
+        </div>
+      `;
+      document.getElementById('newCheckoutBtn').onclick = () => navTo('checkout/1');
+
+      (async () => {
+        const list = document.getElementById('checkoutsList');
+        try {
+          const res = await fetch('/checkout/my', { headers: await getAuthHeaders(), cache: 'no-store' });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed to load');
+          const items = j.checkouts || [];
+          if (!items.length) {
+            list.innerHTML = `<div class="item"><div class="meta"><div class="name">No checkouts yet</div><div class="sub muted">Create your first product checkout</div></div></div>`;
+            return;
+          }
+          list.innerHTML = items.map((c) => {
+            const typeBadge = c.is_digital
+              ? '<span class="checkoutBadge digital">Digital</span>'
+              : '<span class="checkoutBadge physical">Physical</span>';
+            const salesBadge = `<span class="checkoutBadge sales">${Number(c.total_sales || 0)} sales</span>`;
+            return `
+              <div class="item checkoutItem" data-id="${escapeAttr(c.id)}" style="cursor:pointer">
+                <div class="meta" style="flex:1">
+                  <div class="name">${escapeHtml(c.product_name)} ${typeBadge} ${salesBadge}</div>
+                  <div class="sub muted">${formatAmount(c.total_revenue || 0, c.currency || 'NGN')} revenue</div>
+                </div>
+                <label class="toggle" onclick="event.stopPropagation()">
+                  <input type="checkbox" class="coActiveToggle" data-id="${escapeAttr(c.id)}" ${c.is_active ? 'checked' : ''}>
+                  <span class="toggleSlider"></span>
+                </label>
+              </div>
+            `;
+          }).join('');
+
+          list.querySelectorAll('.checkoutItem').forEach((el) => {
+            el.onclick = () => navTo(`checkout-orders/${el.dataset.id}`);
+          });
+          list.querySelectorAll('.coActiveToggle').forEach((toggle) => {
+            toggle.onchange = async () => {
+              try {
+                const res = await fetch(`/checkout/${encodeURIComponent(toggle.dataset.id)}/status`, {
+                  method: 'PATCH',
+                  headers: await getAuthHeaders(),
+                  body: JSON.stringify({ is_active: toggle.checked }),
+                });
+                const j = await res.json();
+                if (!res.ok || !j.success) throw new Error(j.error || 'Update failed');
+              } catch (err) {
+                toggle.checked = !toggle.checked;
+                alert(err.message || t('error'));
+              }
+            };
+          });
+        } catch (err) {
+          list.innerHTML = `<div class="item"><div class="meta"><div class="name">${t('error')}</div><div class="sub muted">${escapeHtml(err.message)}</div></div></div>`;
+        }
+      })();
+    }
+
+    function renderCheckoutOrders(route) {
+      setActiveTab('home');
+      const checkoutId = (route || 'checkout-orders').split('/')[1] || '';
+      host.innerHTML = `
+        <div class="screen">
+          <div class="row" style="margin-bottom:10px">
+            <button class="btn secondary" type="button" id="ordersBackBtn">${t('back')}</button>
+            <div class="spacer"></div>
+          </div>
+          <div class="sectionTitle" id="ordersTitle">Orders</div>
+          <div class="list" id="ordersList">
+            <div class="item"><div class="meta"><div class="name">${t('loading')}</div></div></div>
+          </div>
+        </div>
+      `;
+      document.getElementById('ordersBackBtn').onclick = () => navTo('checkouts');
+
+      (async () => {
+        const list = document.getElementById('ordersList');
+        try {
+          const res = await fetch(`/checkout/orders/${encodeURIComponent(checkoutId)}`, {
+            headers: await getAuthHeaders(),
+            cache: 'no-store',
+          });
+          const j = await res.json();
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed to load orders');
+          document.getElementById('ordersTitle').textContent = j.checkout?.product_name || 'Orders';
+          const orders = j.orders || [];
+          if (!orders.length) {
+            list.innerHTML = `<div class="item"><div class="meta"><div class="name">No orders yet</div><div class="sub muted">Share your checkout link to get sales</div></div></div>`;
+            return;
+          }
+          list.innerHTML = orders.map((o) => {
+            const status = String(o.status || 'pending').toLowerCase();
+            const statusCls = status === 'paid' ? 'ok' : 'warn';
+            const date = o.created_at ? new Date(o.created_at).toLocaleDateString() : '';
+            let downloadLine = '';
+            if (j.checkout?.is_digital && status === 'paid') {
+              const count = Number(o.download_count || 0);
+              downloadLine = `<div class="sub muted">Downloaded ${count}/3 times</div>`;
+            }
+            return `
+              <div class="item">
+                <div class="meta" style="flex:1">
+                  <div class="name">${escapeHtml(o.customer_name || o.customer_email || 'Customer')}</div>
+                  <div class="sub">${escapeHtml(status)} • ${date}</div>
+                  ${downloadLine}
+                </div>
+                <div style="text-align:right">
+                  <div class="amt ${statusCls}">${formatAmount(o.amount, o.currency || 'NGN')}</div>
+                  <button class="btn secondary" type="button" disabled style="margin-top:6px;padding:6px 10px;font-size:11px;opacity:.5">Refund</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          list.innerHTML = `<div class="item"><div class="meta"><div class="name">${t('error')}</div><div class="sub muted">${escapeHtml(err.message)}</div></div></div>`;
+        }
+      })();
+    }
+
     function renderSettings() {
       setActiveTab('settings');
       host.innerHTML = `
         <div class="screen">
           <div class="sectionTitle">${t('Settings') || 'Settings'}</div>
+          <div class="card" style="padding:14px;margin-bottom:10px">
+            <div class="row">
+              <div class="col" style="gap:2px">
+                <div style="font-weight:900">My Checkouts</div>
+                <div class="muted" style="font-size:12px">Manage product pages & orders</div>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn secondary" type="button" id="myCheckoutsBtn">View</button>
+            </div>
+          </div>
           <div class="card" style="padding:14px;margin-bottom:10px">
             <div class="row">
               <div class="col" style="gap:2px">
@@ -2857,6 +3397,7 @@
           </div>
         </div>
       `;
+      document.getElementById('myCheckoutsBtn').onclick = () => navTo('checkouts');
       document.getElementById('bankSetupBtn').onclick = () => navTo('profile-setup/bank');
       document.getElementById('toggleBtn').onclick = () => langToggle.click();
       document.getElementById('logoutBtn').onclick = async () => { if (window.Clerk) await window.Clerk.signOut(); };
@@ -2966,21 +3507,11 @@
             mountClerkAuth();
             return;
           }
-          freelancer = getFreelancerFromClerk();
-          avatarEl.textContent = initials(freelancer.name);
-          authScreen.classList.add('hidden');
-          appEl.classList.remove('hidden');
-          const redirected = await ensureProfileSetup();
-          if (!redirected && !isUserTyping()) safeRender(true);
+          await onClerkSignedIn(user);
         });
 
         if (window.Clerk.user) {
-          freelancer = getFreelancerFromClerk();
-          avatarEl.textContent = initials(freelancer.name);
-          authScreen.classList.add('hidden');
-          appEl.classList.remove('hidden');
-          const redirected = await ensureProfileSetup();
-          if (!redirected) safeRender(true);
+          await onClerkSignedIn(window.Clerk.user);
         } else {
           mountClerkAuth();
         }

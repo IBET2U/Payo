@@ -157,9 +157,44 @@ async function sendPaymentConfirmationEmail(
   return data;
 }
 
+async function sendCheckoutDownloadEmail(customerEmail, productName, downloadUrl) {
+  const { data, error } = await resend.emails.send({
+    from: 'Payo <invoices@payoapp.org>',
+    to: customerEmail,
+    subject: `Your download is ready — ${productName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #000; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: #00f5c4; margin: 0; font-size: 28px;">Payo</h1>
+          <p style="color: #fff; margin: 5px 0 0; font-size: 12px;">Digital Download</p>
+        </div>
+        <div style="background: #f9f9f9; padding: 30px; border: 1px solid #eee;">
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">
+            Thank you for your purchase! Download here:
+          </p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${downloadUrl}" style="display: inline-block; background: #00a884; color: #fff; font-weight: bold; font-size: 16px; padding: 14px 32px; border-radius: 6px; text-decoration: none;">Download Now</a>
+          </div>
+          <p style="color: #666; font-size: 13px; line-height: 1.5;">
+            Or copy this link: ${downloadUrl}<br>
+            This link expires in 48 hours and allows 3 downloads.
+          </p>
+        </div>
+        <div style="background: #000; padding: 15px; border-radius: 0 0 8px 8px; text-align: center;">
+          <p style="color: #666; font-size: 11px; margin: 0;">Powered by Payo — payoapp.org</p>
+        </div>
+      </div>
+    `,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   sendInvoiceEmail,
   sendFollowUpEmail,
   sendPaymentConfirmationEmail,
+  sendCheckoutDownloadEmail,
   formatAmountForCurrency,
 };

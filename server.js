@@ -19,6 +19,7 @@ const ussdRoutes = require('./routes/ussdRoutes');
 const transferRoutes = require('./routes/transferRoutes');
 const earningsRoutes = require('./routes/earningsRoutes');
 const communityRoutes = require('./routes/communityRoutes');
+const checkoutRoutes = require('./routes/checkoutRoutes');
 require('./followUp');
 
 const app = express();
@@ -46,17 +47,36 @@ const invoicesLimiter = createRateLimiter(30);
 const transfersLimiter = createRateLimiter(20);
 const profileLimiter = createRateLimiter(20);
 const communityLimiter = createRateLimiter(60);
+const checkoutLimiter = createRateLimiter(60);
 
 const clerkRequireAuth = ClerkExpressRequireAuth();
 const publicDir = path.join(__dirname, 'public');
+const checkoutHtmlPath = path.resolve(publicDir, 'checkout.html');
 const serveStatic = express.static(publicDir);
 
-const PUBLIC_PATHS = new Set(['/health', '/config', '/ussd', '/banks']);
+const PUBLIC_PATHS = new Set(['/health', '/config', '/ussd', '/banks', '/profile/verify-bank']);
 
 function isPublicRoute(path) {
   if (PUBLIC_PATHS.has(path)) return true;
   if (path.startsWith('/webhooks/paystack')) return true;
   if (path.startsWith('/ussd/')) return true;
+  return false;
+}
+
+const CHECKOUT_RESERVED_SEGMENTS = new Set(['create', 'my', 'orders', 'confirm', 'download', 'api', 'data']);
+
+function isCheckoutProductPath(path) {
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 2 && !CHECKOUT_RESERVED_SEGMENTS.has(segments[0])) {
+    return true;
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'checkout' &&
+    !CHECKOUT_RESERVED_SEGMENTS.has(segments[1])
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -69,6 +89,7 @@ function isApiRoute(path) {
     path === '/banks' ||
     path.startsWith('/earnings') ||
     path.startsWith('/community') ||
+    path.startsWith('/checkout') ||
     path === '/health' ||
     path === '/config' ||
     path.startsWith('/webhooks') ||
@@ -77,11 +98,37 @@ function isApiRoute(path) {
   );
 }
 
+function isCheckoutPublicPath(path, method) {
+  if (path.startsWith('/data/')) return true;
+  if (method === 'GET' && /^\/api\/[^/]+\/[^/]+$/.test(path)) return true;
+  if (method === 'GET' && isCheckoutProductPath(path)) return true;
+  if (method === 'POST' && /^\/[^/]+\/pay$/.test(path)) return true;
+  if (method === 'POST' && (path.startsWith('/confirm/') || path.startsWith('/checkout/confirm/'))) {
+    return true;
+  }
+  if (method === 'GET' && (path.startsWith('/download/') || path.startsWith('/checkout/download/'))) {
+    return true;
+  }
+  return false;
+}
+
+function serveCheckoutHtml(req, res, next) {
+  res.sendFile(checkoutHtmlPath, (err) => {
+    if (err) {
+      console.error('[Checkout] sendFile failed:', err.message);
+      next(err);
+    }
+  });
+}
+
 app.use(cors());
 app.use('/webhooks/paystack', express.raw({ type: 'application/json' }));
 app.use('/webhooks/nowpayments', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(generalLimiter);
+
+// Checkout HTML — must be registered before app.use('/checkout') API mount
+app.get('/checkout/:username/:slug', serveCheckoutHtml);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'Payo is alive' });
@@ -104,12 +151,24 @@ app.get('/banks', transfersLimiter, async (req, res) => {
   }
 });
 
+app.use('/checkout', checkoutLimiter, (req, res, next) => {
+  if (isCheckoutPublicPath(req.path, req.method)) {
+    return next();
+  }
+  return clerkRequireAuth(req, res, next);
+}, checkoutRoutes);
+
 // Protected API routes — Clerk auth applied per mount, before static
 app.use('/invoices', invoicesLimiter, clerkRequireAuth, invoiceRoutes);
 app.use('/webhooks/paystack', webhookRoutes);
 app.use('/webhooks/nowpayments', nowpaymentsWebhookRoutes);
 app.use('/chat', chatLimiter, clerkRequireAuth, chatRoutes);
-app.use('/profile', profileLimiter, clerkRequireAuth, profileRoutes);
+app.use('/profile', profileLimiter, (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/verify-bank') {
+    return next();
+  }
+  return clerkRequireAuth(req, res, next);
+}, profileRoutes);
 app.use('/earnings', profileLimiter, clerkRequireAuth, earningsRoutes);
 app.use('/transfers', transfersLimiter, clerkRequireAuth, transferRoutes);
 app.use('/community', communityLimiter, (req, res, next) => {
@@ -118,6 +177,7 @@ app.use('/community', communityLimiter, (req, res, next) => {
   }
   return clerkRequireAuth(req, res, next);
 }, communityRoutes);
+
 app.use('/ussd', ussdRoutes);
 
 // Static files only for non-API paths (never intercept /profile, /chat, etc.)
@@ -135,6 +195,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Fallback: serve checkout page for product URLs that slipped through
+app.get(/^\/checkout\/[^/]+\/[^/]+$/, serveCheckoutHtml);
 
 app.use((err, req, res, next) => {
   if (err.message === 'Unauthenticated') {

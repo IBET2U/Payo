@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout — Payo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0b141a;
+      color: #fff;
+      min-height: 100dvh;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 16px;
+    }
+
+    .state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;
+      padding: 48px 0;
+      color: #8696a0;
+    }
+
+    .state h2 {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .hidden { display: none !important; }
+
+    .seller-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 0 20px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #00a884;
+      color: #0b141a;
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .seller-label {
+      font-size: 13px;
+      color: #8696a0;
+      margin-bottom: 2px;
+    }
+
+    .seller-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .card {
+      background: #1f2c34;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .product-name {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.3px;
+    }
+
+    .description {
+      margin-top: 10px;
+      font-size: 15px;
+      color: #b0bec5;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(0, 168, 132, 0.15);
+      border: 1px solid rgba(0, 168, 132, 0.4);
+      color: #00a884;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .price-large {
+      margin-top: 20px;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .price-rows {
+      margin-top: 20px;
+      font-size: 15px;
+    }
+
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      color: #b0bec5;
+    }
+
+    .price-row.total {
+      margin-top: 8px;
+      padding-top: 14px;
+      border-top: 1px solid #2a3942;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #8696a0;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 14px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: #8696a0;
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #2a3942;
+      border-radius: 12px;
+      background: #121f27;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: #00a884;
+    }
+
+    .pay-btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: #00a884;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      transition: opacity 0.2s;
+    }
+
+    .pay-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .pay-btn.loading .spinner { display: block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer {
+      margin-top: auto;
+      padding: 24px 0 32px;
+      text-align: center;
+      font-size: 13px;
+      color: #8696a0;
+    }
+
+    .footer a {
+      color: #00a884;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer a:hover { text-decoration: underline; }
+
+    .loader {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a3942;
+      border-top-color: #00a884;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div id="loading" class="state">
+      <div class="loader"></div>
+      <p>Loading checkout…</p>
+    </div>
+
+    <div id="error" class="state hidden">
+      <h2>Checkout not found</h2>
+      <p>This product may no longer be available.</p>
+    </div>
+
+    <div id="checkout" class="hidden">
+      <div class="seller-bar">
+        <div class="avatar" id="avatar">S</div>
+        <div>
+          <div class="seller-label">Sold by</div>
+          <div class="seller-name" id="sellerName"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h1 class="product-name" id="productName"></h1>
+        <p class="description" id="description"></p>
+        <span class="badge hidden" id="digitalBadge">Digital Download</span>
+        <div id="priceArea"></div>
+      </div>
+
+      <div class="card hidden" id="formCard">
+        <div class="form-label">Your details</div>
+        <div id="formFields"></div>
+      </div>
+
+      <button type="button" class="pay-btn" id="payBtn">
+        <span class="spinner"></span>
+        <span id="payBtnText">Pay →</span>
+      </button>
+    </div>
+
+    <footer class="footer">
+      Powered by Payo 💚 — Get your free checkout at <a href="https://payoapp.org">payoapp.org</a>
+    </footer>
+  </div>
+
+  <script>
+    let checkout = null;
+    let slug = '';
+    let total = 0;
+
+    function sym(currency) {
+      return currency === 'USD' ? '$' : '₦';
+    }
+
+    function fmt(amount, currency) {
+      const s = sym(currency);
+      return s + Number(amount).toLocaleString('en-NG', { maximumFractionDigits: 0 });
+    }
+
+    function show(id) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error').classList.add('hidden');
+      document.getElementById('checkout').classList.add('hidden');
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function renderPrice(c) {
+      const price = Number(c.price);
+      const currency = c.currency || 'NGN';
+      const area = document.getElementById('priceArea');
+
+      if (c.add_vat) {
+        const vat = price * 0.075;
+        total = price * 1.075;
+        area.innerHTML =
+          '<div class="price-rows">' +
+            '<div class="price-row"><span>Base</span><span>' + fmt(price, currency) + '</span></div>' +
+            '<div class="price-row"><span>VAT 7.5%</span><span>' + fmt(vat, currency) + '</span></div>' +
+            '<div class="price-row total"><span>Total</span><span>' + fmt(total, currency) + '</span></div>' +
+          '</div>';
+      } else {
+        total = price;
+        area.innerHTML = '<div class="price-large">' + fmt(price, currency) + '</div>';
+      }
+    }
+
+    function renderForm(c) {
+      const fields = document.getElementById('formFields');
+      let html = '';
+
+      if (c.collect_name) {
+        html += '<div class="field"><label for="customerName">Name</label>' +
+          '<input type="text" id="customerName" placeholder="Your name" autocomplete="name"></div>';
+      }
+      if (c.collect_email) {
+        html += '<div class="field"><label for="customerEmail">Email</label>' +
+          '<input type="email" id="customerEmail" placeholder="Your email" autocomplete="email"></div>';
+      }
+      if (c.collect_phone) {
+        html += '<div class="field"><label for="customerPhone">Phone</label>' +
+          '<input type="tel" id="customerPhone" placeholder="Your phone" autocomplete="tel"></div>';
+      }
+
+      if (!html) {
+        document.getElementById('formCard').classList.add('hidden');
+      } else {
+        document.getElementById('formCard').classList.remove('hidden');
+        fields.innerHTML = html;
+      }
+    }
+
+    function render(c) {
+      const seller = c.seller_name || 'Seller';
+      document.getElementById('avatar').textContent = seller.charAt(0).toUpperCase();
+      document.getElementById('sellerName').textContent = seller;
+      document.getElementById('productName').textContent = c.product_name;
+      document.getElementById('description').textContent = c.description || '';
+
+      if (c.is_digital) {
+        document.getElementById('digitalBadge').classList.remove('hidden');
+      }
+
+      renderPrice(c);
+      renderForm(c);
+
+      document.getElementById('payBtnText').textContent =
+        'Pay ' + fmt(total, c.currency || 'NGN') + ' →';
+    }
+
+    async function init() {
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const username = parts[1];
+      slug = parts[2];
+
+      if (!username || !slug) {
+        show('error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/checkout/data/' + username + '/' + slug);
+        const json = await res.json();
+        if (!json.success) {
+          show('error');
+          return;
+        }
+
+        checkout = json.checkout;
+        render(checkout);
+        show('checkout');
+      } catch (err) {
+        show('error');
+      }
+    }
+
+    document.getElementById('payBtn').addEventListener('click', async function () {
+      const btn = this;
+      if (btn.disabled || !checkout) return;
+
+      const payload = {};
+      const nameEl = document.getElementById('customerName');
+      const emailEl = document.getElementById('customerEmail');
+      const phoneEl = document.getElementById('customerPhone');
+
+      if (nameEl) payload.customer_name = nameEl.value.trim();
+      if (emailEl) payload.customer_email = emailEl.value.trim();
+      if (phoneEl) payload.customer_phone = phoneEl.value.trim();
+
+      btn.disabled = true;
+      btn.classList.add('loading');
+
+      try {
+        const res = await fetch('/checkout/' + slug + '/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!json.success || !json.payment_url) {
+          throw new Error(json.error || 'Payment failed');
+        }
+
+        window.location.href = json.payment_url;
+      } catch (err) {
+        alert(err.message || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

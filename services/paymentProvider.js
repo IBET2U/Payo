@@ -1,6 +1,6 @@
 const { initializePayment } = require('../payments');
 const { createPaymentInvoice } = require('../nowpayments');
-const { getProfile } = require('./profileService');
+const supabase = require('../supabase');
 
 const PAYO_PAYSTACK_FALLBACK_EMAIL = 'payments@payoapp.org';
 
@@ -12,6 +12,7 @@ async function createPaymentLink({
   clientName,
   description,
   freelancerWalletAddress,
+  freelancerId,
 }) {
   const code = String(currency || 'NGN').toUpperCase().trim() === 'USD' ? 'USD' : 'NGN';
 
@@ -35,7 +36,12 @@ async function createPaymentLink({
   let subaccountCode = null;
   if (freelancerId) {
     try {
-      const profile = await getProfile(freelancerId);
+      const { data: profile } = await supabase
+        .from('freelancer_profiles')
+        .select('subaccount_code')
+        .eq('id', freelancerId)
+        .maybeSingle();
+
       const code = profile?.subaccount_code && String(profile.subaccount_code).trim();
       if (code) {
         subaccountCode = code;
@@ -49,15 +55,21 @@ async function createPaymentLink({
     }
   }
 
-  const { authorizationUrl, reference } = await initializePayment({
+  const paystackOptions = {
     clientEmail: safeEmail,
     amount,
     invoiceId,
     clientName,
     currency: 'NGN',
-    subaccount: subaccountCode || undefined,
-    bearer: subaccountCode ? 'subaccount' : undefined,
-  });
+  };
+
+  if (subaccountCode) {
+    paystackOptions.subaccount = subaccountCode;
+    paystackOptions.bearer = 'subaccount';
+    paystackOptions.transaction_charge = 0;
+  }
+
+  const { authorizationUrl, reference } = await initializePayment(paystackOptions);
 
   return {
     paymentUrl: authorizationUrl,

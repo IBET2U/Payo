@@ -4,6 +4,7 @@ const supabase = require('../supabase');
 const { sendPaymentConfirmationEmail } = require('../mailer');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
 const { updateUserEarnings } = require('../services/earningsService');
+const { confirmCheckoutOrder } = require('../services/checkoutService');
 const { createPaymentCommunityPost } = require('./communityRoutes');
 
 const router = express.Router();
@@ -94,10 +95,21 @@ router.post('/', async (req, res) => {
       .from('invoices')
       .select('id, freelancer_id, freelancer_email, freelancer_phone, client_name, amount, currency, status, payment_reference')
       .eq('id', invoiceId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) throw fetchError;
+
     if (!invoice) {
+      try {
+        const checkoutResult = await confirmCheckoutOrder(invoiceId);
+        if (checkoutResult.handled) {
+          console.log(`[Paystack Webhook] Checkout order ${invoiceId} processed`);
+          return res.status(200).json({ success: true, message: 'Checkout order processed' });
+        }
+      } catch (checkoutErr) {
+        console.error('[Paystack Webhook] Checkout confirm failed:', checkoutErr.message);
+        return res.status(500).json({ success: false, error: checkoutErr.message });
+      }
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
 
