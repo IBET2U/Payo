@@ -1679,7 +1679,7 @@
             <button class="btn" type="button" id="setupPrimaryBtn" style="margin-top:20px;width:100%;max-width:300px">${primaryLabel}</button>
             ${
               isBank && typeof opts.onSwitchUsd === 'function'
-                ? '<button class="btn secondary" type="button" id="setupUsdBtn" style="margin-top:10px;width:100%;max-width:300px">Create USD Invoice instead</button>'
+                ? `<button class="btn secondary" type="button" id="setupUsdBtn" style="margin-top:10px;width:100%;max-width:300px">${opts.usdLabel || 'Create USD Invoice instead'}</button>`
                 : ''
             }
             <a class="createAnother" id="setupBackLink" href="#" style="margin-top:14px;display:block">${t('back')}</a>
@@ -3281,7 +3281,27 @@
               body: JSON.stringify(payload),
             });
             const j = await res.json();
-            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to create checkout');
+            if (!res.ok || !j.success) {
+              const handled = handleInvoiceSetupError(j, {
+                backRoute: 'checkout/3',
+                usdLabel: 'Create USD Checkout instead',
+                onSwitchUsd: () => {
+                  const next = {
+                    ...state,
+                    currency: 'USD',
+                    collect_name: payload.collect_name,
+                    collect_email: payload.collect_email,
+                    collect_phone: payload.collect_phone,
+                    thank_you_message: payload.thank_you_message || '',
+                  };
+                  sessionStorage.setItem('checkoutFlow', JSON.stringify(next));
+                  navTo('checkout/1');
+                  safeRender(true);
+                },
+              });
+              if (handled) return;
+              throw new Error(j.message || j.error || 'Failed to create checkout');
+            }
             sessionStorage.setItem('checkoutReceipt', JSON.stringify({
               url: j.checkout?.url || '',
               slug: j.checkout?.slug,

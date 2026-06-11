@@ -104,6 +104,31 @@ router.post('/create', requireAuth, async (req, res) => {
     }
 
     const profile = await getProfile(sellerId);
+
+    // Payment routing guard — same rule as invoices: no destination, no checkout.
+    if (
+      normalizedCurrency === 'NGN' &&
+      !(profile?.subaccount_code && String(profile.subaccount_code).trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'bank_account_required',
+        message:
+          'Please add your Nigerian bank account before creating Naira checkouts. This ensures payments go directly to your account.',
+      });
+    }
+
+    if (
+      normalizedCurrency === 'USD' &&
+      !(profile?.wallet_address && String(profile.wallet_address).trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'wallet_required',
+        message: 'Please add your USDC wallet address before creating USD checkouts.',
+      });
+    }
+
     const username = getSellerUsername(profile);
 
     let slug = generateCheckoutSlug(product_name);
@@ -404,6 +429,28 @@ router.post('/:slug/pay', async (req, res) => {
       });
     }
 
+    // Never take a buyer's money if the seller has nowhere to receive it.
+    const sellerProfile = await getProfile(checkout.seller_id);
+    const checkoutCurrency = (checkout.currency || 'NGN').toUpperCase();
+    const sellerSubaccount =
+      sellerProfile?.subaccount_code && String(sellerProfile.subaccount_code).trim();
+    const sellerWallet =
+      sellerProfile?.wallet_address && String(sellerProfile.wallet_address).trim();
+
+    if (checkoutCurrency === 'NGN' && !sellerSubaccount) {
+      return res.status(400).json({
+        success: false,
+        error: 'This seller has not finished their payment setup yet. Please try again later.',
+      });
+    }
+
+    if (checkoutCurrency === 'USD' && !sellerWallet) {
+      return res.status(400).json({
+        success: false,
+        error: 'This seller has not finished their payment setup yet. Please try again later.',
+      });
+    }
+
     const pricing = calculatePricing(checkout.price, checkout.add_vat);
 
     const { data: order, error: orderError } = await supabase
@@ -433,6 +480,7 @@ router.post('/:slug/pay', async (req, res) => {
       clientName: customer_name || 'Customer',
       description: checkout.product_name,
       freelancerId: checkout.seller_id,
+      freelancerWalletAddress: checkoutCurrency === 'USD' ? sellerWallet : undefined,
     });
 
     const { error: updateError } = await supabase
