@@ -209,15 +209,20 @@ async function createTransferRecipient(accountNumber, bankCode, name) {
   return code;
 }
 
+const MAX_TRANSFER_AMOUNT = 10000000;
+
 async function initiateTransfer(senderId, recipientDetails, amount, reason, options = {}) {
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt <= 0) {
     throw new Error('A valid positive amount is required');
   }
+  if (amt > MAX_TRANSFER_AMOUNT) {
+    throw new Error('Transfer amount exceeds the maximum limit of ₦10,000,000.');
+  }
 
   let { data: sender, error: senderError } = await supabase
     .from('freelancer_profiles')
-    .select('id, name, phone, email')
+    .select('id, name, phone, email, wallet_balance')
     .eq('id', senderId)
     .maybeSingle();
 
@@ -242,12 +247,36 @@ async function initiateTransfer(senderId, recipientDetails, amount, reason, opti
     sender = newProfile;
   }
 
+  // Sender must have the funds — block overdrafts and debit before sending
+  const senderBalanceBeforeDebit = Number(sender.wallet_balance || 0);
+  if (senderBalanceBeforeDebit < amt) {
+    throw new Error(
+      `Insufficient balance. Your wallet balance is ₦${senderBalanceBeforeDebit.toLocaleString('en-NG')}.`
+    );
+  }
+
+  // Conditional debit: the .gte guard prevents the balance going negative
+  // even if two transfers race each other.
+  const { data: debited, error: debitError } = await supabase
+    .from('freelancer_profiles')
+    .update({ wallet_balance: senderBalanceBeforeDebit - amt })
+    .eq('id', senderId)
+    .gte('wallet_balance', amt)
+    .select('id')
+    .maybeSingle();
+
+  if (debitError) throw debitError;
+  if (!debited) {
+    throw new Error('Insufficient balance. Please refresh and try again.');
+  }
+
   let transferRecord = null;
   const status = 'success';
   let provider = 'internal';
   let providerReference = null;
   let recipientBalanceBeforeCredit = null;
   let payoRecipientId = null;
+  let senderDebited = true;
 
   try {
     if (recipientDetails.type === 'payo') {
@@ -364,6 +393,24 @@ async function initiateTransfer(senderId, recipientDetails, amount, reason, opti
         .from('freelancer_profiles')
         .update({ wallet_balance: recipientBalanceBeforeCredit })
         .eq('id', payoRecipientId);
+    }
+    if (senderDebited) {
+      try {
+        const { data: current } = await supabase
+          .from('freelancer_profiles')
+          .select('wallet_balance')
+          .eq('id', senderId)
+          .maybeSingle();
+        await supabase
+          .from('freelancer_profiles')
+          .update({ wallet_balance: Number(current?.wallet_balance || 0) + amt })
+          .eq('id', senderId);
+      } catch (refundErr) {
+        console.error(
+          `[Transfer] CRITICAL: refund failed for ${senderId}, amount ${amt}:`,
+          refundErr.message
+        );
+      }
     }
     throw err;
   }
