@@ -79,7 +79,7 @@ router.post('/', async (req, res) => {
       }
 
       console.log('[CHAT DEBUG] Calling createAndSendInvoice with currency:', currency);
-      const { invoice, payment_url } = await createAndSendInvoice({
+      const result = await createAndSendInvoice({
         freelancer_id,
         freelancer_email,
         freelancer_name,
@@ -91,6 +91,23 @@ router.post('/', async (req, res) => {
         due_date: extracted.due_date,
         currency,
       });
+
+      if (result.success === false) {
+        const reply = result.message || 'Please finish your payment setup first.';
+        return res.json({
+          success: true,
+          intent: 'create_invoice',
+          setup_required: result.error,
+          reply,
+          messages: [
+            ...messages,
+            { role: 'user', content: message },
+            { role: 'assistant', content: reply },
+          ],
+        });
+      }
+
+      const { invoice, payment_url } = result;
 
       const reply = buildInvoiceConfirmationReply(
         extracted.amount,

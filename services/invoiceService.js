@@ -31,6 +31,32 @@ async function createAndSendInvoice({
     throw new Error(`Invalid currency: ${currency}`);
   }
 
+  // Payment routing guard: never create an invoice whose money has nowhere to land.
+  const profile = await getProfile(freelancer_id);
+
+  if (normalizedCurrency === 'NGN') {
+    const subaccountCode = trimOrNull(profile?.subaccount_code);
+    if (!subaccountCode) {
+      return {
+        success: false,
+        error: 'bank_account_required',
+        message:
+          'Please add your Nigerian bank account before creating Naira invoices. This ensures payments go directly to your account.',
+      };
+    }
+  }
+
+  if (normalizedCurrency === 'USD') {
+    const walletAddress = trimOrNull(profile?.wallet_address);
+    if (!walletAddress) {
+      return {
+        success: false,
+        error: 'wallet_required',
+        message: 'Please add your USDC wallet address before creating USD invoices.',
+      };
+    }
+  }
+
   const cleanClientEmail = trimOrNull(client_email);
   const rawClientPhone = trimOrNull(client_phone);
   const normalizedClientPhone = rawClientPhone ? normalizeNigerianPhone(rawClientPhone) : null;
@@ -60,24 +86,11 @@ async function createAndSendInvoice({
     );
   }
 
-  let freelancerProfilePhone = null;
-  let freelancerWalletAddress;
-  try {
-    const profile = await getProfile(freelancer_id);
-    freelancerProfilePhone = profile?.phone
-      ? normalizeNigerianPhone(profile.phone) || trimOrNull(profile.phone)
-      : null;
-    if (normalizedCurrency === 'USD' && profile?.wallet_address) {
-      const wallet = String(profile.wallet_address).trim();
-      freelancerWalletAddress = wallet || undefined;
-    }
-  } catch (err) {
-    console.error(
-      `[invoiceService] getProfile failed for ${freelancer_id}, continuing without wallet:`,
-      err.message
-    );
-    freelancerWalletAddress = undefined;
-  }
+  const freelancerProfilePhone = profile?.phone
+    ? normalizeNigerianPhone(profile.phone) || trimOrNull(profile.phone)
+    : null;
+  const freelancerWalletAddress =
+    normalizedCurrency === 'USD' ? trimOrNull(profile?.wallet_address) || undefined : undefined;
 
   const { data, error } = await supabase
     .from('invoices')
@@ -177,7 +190,7 @@ async function createAndSendInvoice({
     }
   }
 
-  return { invoice, payment_url: paymentUrl };
+  return { success: true, invoice, payment_url: paymentUrl };
 }
 
 module.exports = { createAndSendInvoice };

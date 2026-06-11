@@ -22,7 +22,7 @@ router.post('/create', async (req, res) => {
       currency = 'NGN',
     } = req.body;
 
-    const { invoice, payment_url } = await createAndSendInvoice({
+    const result = await createAndSendInvoice({
       freelancer_id,
       freelancer_email,
       freelancer_name,
@@ -34,6 +34,13 @@ router.post('/create', async (req, res) => {
       due_date,
       currency: (currency || 'NGN').toUpperCase() === 'USD' ? 'USD' : 'NGN',
     });
+
+    // Setup-required errors (bank_account_required / wallet_required)
+    if (result.success === false) {
+      return res.status(400).json(result);
+    }
+
+    const { invoice, payment_url } = result;
 
     res.json({
       success: true,

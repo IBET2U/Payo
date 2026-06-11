@@ -35,23 +35,24 @@ async function createPaymentLink({
 
   let subaccountCode = null;
   if (freelancerId) {
-    try {
-      const { data: profile } = await supabase
-        .from('freelancer_profiles')
-        .select('subaccount_code')
-        .eq('id', freelancerId)
-        .maybeSingle();
+    // If this lookup fails we must NOT fall back to the main Paystack account —
+    // that would silently route the freelancer's money to Payo.
+    const { data: profile, error: profileError } = await supabase
+      .from('freelancer_profiles')
+      .select('subaccount_code')
+      .eq('id', freelancerId)
+      .maybeSingle();
 
-      const code = profile?.subaccount_code && String(profile.subaccount_code).trim();
-      if (code) {
-        subaccountCode = code;
-        console.log(`[paymentProvider] Using subaccount ${code} for invoice ${invoiceId}`);
-      }
-    } catch (err) {
-      console.warn(
-        `[paymentProvider] Could not load subaccount for ${freelancerId}:`,
-        err.message
+    if (profileError) {
+      throw new Error(
+        `Could not load payment routing for this seller: ${profileError.message}`
       );
+    }
+
+    const code = profile?.subaccount_code && String(profile.subaccount_code).trim();
+    if (code) {
+      subaccountCode = code;
+      console.log(`[paymentProvider] Using subaccount ${code} for invoice ${invoiceId}`);
     }
   }
 

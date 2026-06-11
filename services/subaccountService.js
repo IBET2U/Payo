@@ -119,7 +119,10 @@ async function createSubaccount(userId, { accountNumber, bankCode, businessName,
     throw new Error('Paystack did not return a subaccount_code');
   }
 
-  const { data: updatedProfile, error } = await supabase
+  // Save subaccount_code to freelancer_profiles immediately — payment routing
+  // depends on this field. If it doesn't persist, Naira payments fall back to
+  // the main Paystack account.
+  let { data: updatedProfile, error } = await supabase
     .from('freelancer_profiles')
     .upsert(
       {
@@ -139,6 +142,24 @@ async function createSubaccount(userId, { accountNumber, bankCode, businessName,
     .single();
 
   if (error) throw error;
+
+  if (updatedProfile?.subaccount_code !== subaccount_code) {
+    const { data: retriedProfile, error: retryError } = await supabase
+      .from('freelancer_profiles')
+      .update({ subaccount_code })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (retryError) throw retryError;
+    updatedProfile = retriedProfile;
+  }
+
+  if (updatedProfile?.subaccount_code !== subaccount_code) {
+    throw new Error(
+      'Subaccount was created on Paystack but could not be saved to your profile. Please try again.'
+    );
+  }
 
   return {
     subaccount_code,

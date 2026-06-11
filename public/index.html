@@ -1661,6 +1661,53 @@
       });
     }
 
+    function renderPaymentSetupRequired(kind, opts = {}) {
+      const isBank = kind === 'bank_account_required';
+      const title = isBank ? 'Add your bank account first 🏦' : 'Add your wallet address first 💰';
+      const body = isBank
+        ? 'To receive Naira payments directly in your account, add your Nigerian bank details. Takes 2 minutes.'
+        : 'To receive USD payments, add your USDC wallet address. Takes 2 minutes.';
+      const primaryLabel = isBank ? 'Add Bank Account' : 'Add Wallet Address';
+      const primaryRoute = isBank ? 'profile-setup/bank' : 'profile-setup/wallet';
+
+      host.innerHTML = `
+        <div class="screen">
+          <div class="center" style="padding-top:30px">
+            <div style="font-size:44px;margin-bottom:14px">${isBank ? '🏦' : '💰'}</div>
+            <div style="font-weight:1000;font-size:20px">${title}</div>
+            <div class="muted" style="margin-top:10px;font-size:14px;line-height:1.5;max-width:300px">${body}</div>
+            <button class="btn" type="button" id="setupPrimaryBtn" style="margin-top:20px;width:100%;max-width:300px">${primaryLabel}</button>
+            ${
+              isBank && typeof opts.onSwitchUsd === 'function'
+                ? '<button class="btn secondary" type="button" id="setupUsdBtn" style="margin-top:10px;width:100%;max-width:300px">Create USD Invoice instead</button>'
+                : ''
+            }
+            <a class="createAnother" id="setupBackLink" href="#" style="margin-top:14px;display:block">${t('back')}</a>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('setupPrimaryBtn').onclick = () => {
+        navTo(primaryRoute);
+        safeRender(true);
+      };
+      const usdBtn = document.getElementById('setupUsdBtn');
+      if (usdBtn) usdBtn.onclick = () => opts.onSwitchUsd();
+      document.getElementById('setupBackLink').onclick = (e) => {
+        e.preventDefault();
+        navTo(opts.backRoute || 'home');
+        safeRender(true);
+      };
+    }
+
+    function handleInvoiceSetupError(j, opts) {
+      if (j && (j.error === 'bank_account_required' || j.error === 'wallet_required')) {
+        renderPaymentSetupRequired(j.error, opts);
+        return true;
+      }
+      return false;
+    }
+
     function render(force) {
       if (!force && isUserTyping()) {
         pendingRender = true;
@@ -2215,8 +2262,8 @@
               <div class="muted" style="font-size:12px;margin-bottom:8px">${t('howMuch')}</div>
               <div class="row">
                 <select id="curSel" class="input" style="max-width:110px;padding:12px">
-                  <option value="NGN">₦ NGN</option>
-                  <option value="USD">$ USD</option>
+                  <option value="NGN" ${state.currency !== 'USD' ? 'selected' : ''}>₦ NGN</option>
+                  <option value="USD" ${state.currency === 'USD' ? 'selected' : ''}>$ USD</option>
                 </select>
                 <input class="input" id="amtInput" inputmode="numeric" placeholder="0" value="${state.amount || ''}">
               </div>
@@ -2266,7 +2313,19 @@
               body: JSON.stringify(payload),
             });
             const j = await res.json();
-            if (!res.ok || !j.success) throw new Error(j.error || 'Failed to send bill');
+            if (!res.ok || !j.success) {
+              const handled = handleInvoiceSetupError(j, {
+                backRoute: 'bill/2',
+                onSwitchUsd: () => {
+                  const next = { ...state, amount: amt, desc, currency: 'USD' };
+                  sessionStorage.setItem('billFlow', JSON.stringify(next));
+                  navTo('bill/2');
+                  safeRender(true);
+                },
+              });
+              if (handled) return;
+              throw new Error(j.message || j.error || 'Failed to send bill');
+            }
             sessionStorage.setItem(
               'billReceipt',
               JSON.stringify({ amount: amt, currency, clientName: state.name })
@@ -2425,7 +2484,19 @@
           });
           const j = await res.json();
           if (!res.ok || !j.success) {
-            throw new Error(j.error || 'Failed to generate link');
+            const handled = handleInvoiceSetupError(j, {
+              backRoute: 'quick',
+              onSwitchUsd: () => {
+                sessionStorage.setItem(
+                  'quickLinkFlow',
+                  JSON.stringify({ amount, description, currency: 'USD' })
+                );
+                navTo('quick');
+                safeRender(true);
+              },
+            });
+            if (handled) return;
+            throw new Error(j.message || j.error || 'Failed to generate link');
           }
           const paymentUrl = j.payment_url || j.invoice?.payment_url;
           if (!paymentUrl) {
@@ -2546,7 +2617,8 @@
           });
           const j = await res.json();
           if (!res.ok || !j.success) {
-            throw new Error(j.error || 'Failed to send request');
+            if (handleInvoiceSetupError(j, { backRoute: 'collect' })) return;
+            throw new Error(j.message || j.error || 'Failed to send request');
           }
 
           sessionStorage.setItem(
@@ -2605,7 +2677,10 @@
           };
           const res = await fetch('/invoices/create', { method:'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
           const j = await res.json();
-          if (!res.ok || !j.success) throw new Error(j.error || 'Failed');
+          if (!res.ok || !j.success) {
+            if (handleInvoiceSetupError(j, { backRoute: 'global' })) return;
+            throw new Error(j.message || j.error || 'Failed');
+          }
           const box = document.getElementById('globalResult');
           box.classList.remove('hidden');
           box.innerHTML = `
@@ -2829,8 +2904,8 @@
         `;
 
         document.getElementById('walletSkipBtn').onclick = () => {
-          markProfileSetupDone(window.Clerk.user.id);
-          showMainApp();
+          // USD wallet is optional — but the bank step is not, so move on to it.
+          navTo('profile-setup/bank');
         };
         document.getElementById('walletSaveBtn').onclick = async () => {
           const btn = document.getElementById('walletSaveBtn');
@@ -2865,8 +2940,11 @@
       host.innerHTML = `
         <div class="screen" id="bankSetupScreen">
           <div class="sectionTitle">Receive Naira directly</div>
+          <div style="font-size:13px;margin-bottom:14px;line-height:1.5;padding:12px;border-radius:14px;background:rgba(0,168,132,.1);border:1px solid rgba(0,168,132,.35)">
+            This is where your Naira payments land. Without this, you cannot receive payments in Naira.
+          </div>
           <div class="muted" style="font-size:13px;margin-bottom:14px;line-height:1.4">
-            Add your Nigerian bank account to receive Naira payments directly. Client payments settle straight to you. Payo keeps 1%.
+            Client payments settle straight to you. Payo keeps 1%.
           </div>
           <div class="card" style="padding:14px">
             <div class="muted" style="font-size:12px;margin-bottom:8px">${t('selectBank')}</div>
@@ -2888,17 +2966,11 @@
               <div class="spacer"></div>
               <button class="btn" type="button" id="saveBankBtn">Save Bank Account</button>
             </div>
-            <button class="btn ghost" type="button" id="bankSkipBtn" style="width:100%;margin-top:8px">Skip for now</button>
           </div>
         </div>
       `;
 
       let verifiedAccountName = userProfile?.bank_account_name || null;
-
-      document.getElementById('bankSkipBtn').onclick = () => {
-        markProfileSetupDone(window.Clerk.user.id);
-        showMainApp();
-      };
       document.getElementById('verifyBankBtn').onclick = async () => {
         const btn = document.getElementById('verifyBankBtn');
         const bankSelect = document.getElementById('setupBankSelect');
