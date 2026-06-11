@@ -1,9 +1,37 @@
 const express = require('express');
+const { clerkClient } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const {
   getProfile,
   createOrUpdateProfile,
 } = require('../services/profileService');
+
+// New users often hit bank setup before any profile row exists, and Clerk
+// session claims don't carry an email — resolve it from every source we have.
+async function resolveUserEmail(req, existingProfile, bodyEmail) {
+  const candidates = [
+    existingProfile?.email,
+    bodyEmail,
+    req.auth?.sessionClaims?.email,
+  ];
+
+  for (const candidate of candidates) {
+    const email = String(candidate || '').trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return email;
+  }
+
+  try {
+    const user = await clerkClient.users.getUser(req.auth.userId);
+    const clerkEmail =
+      user?.emailAddresses?.find((e) => e.id === user.primaryEmailAddressId)
+        ?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
+    if (clerkEmail) return String(clerkEmail).trim().toLowerCase();
+  } catch (err) {
+    console.warn('[Profile] Clerk email lookup failed:', err.message);
+  }
+
+  return null;
+}
 const {
   createSubaccount,
   getBanks,
@@ -112,6 +140,14 @@ router.post('/bank', async (req, res) => {
     }
 
     const existing = await getProfile(userId);
+    const email = await resolveUserEmail(req, existing, raw.email);
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'We could not find your email. Please update your profile and try again.',
+      });
+    }
 
     const verified = await verifyBankAccount(account_number, bank_code);
     if (!verified?.account_name) {
@@ -125,7 +161,7 @@ router.post('/bank', async (req, res) => {
       accountNumber: account_number,
       bankCode: bank_code,
       businessName: business_name,
-      email: existing?.email || req.auth?.sessionClaims?.email || null,
+      email,
     });
 
     res.json({

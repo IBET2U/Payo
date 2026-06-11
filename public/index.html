@@ -1694,6 +1694,8 @@
       `;
 
       document.getElementById('setupPrimaryBtn').onclick = () => {
+        // After finishing setup, return the user to the flow they came from
+        if (opts.backRoute) sessionStorage.setItem('payoReturnTo', opts.backRoute);
         navTo(primaryRoute);
         safeRender(true);
       };
@@ -2959,6 +2961,7 @@
           if (!wallet) return alert('Enter a wallet address or tap Skip for now');
           try {
             btn.disabled = true;
+            freelancer = freelancer || getFreelancerFromClerk();
             const res = await fetch('/profile', {
               method: 'POST',
               headers: await getAuthHeaders(),
@@ -3055,6 +3058,7 @@
         if (!verifiedAccountName) return alert('Please verify your account first');
         try {
           btn.disabled = true;
+          freelancer = freelancer || getFreelancerFromClerk();
           const res = await fetch('/profile/bank', {
             method: 'POST',
             headers: await getAuthHeaders(),
@@ -3062,6 +3066,7 @@
               bank_code: bankCode,
               account_number: accountNumber,
               business_name: businessName || freelancer?.name || null,
+              email: freelancer?.email || null,
             }),
           });
           const j = await res.json();
@@ -3070,7 +3075,14 @@
           profileFlags.has_bank = true;
           alert('Bank account linked! Naira payments will go directly to your account.');
           markProfileSetupDone(window.Clerk.user.id);
-          showMainApp();
+          const returnTo = sessionStorage.getItem('payoReturnTo');
+          sessionStorage.removeItem('payoReturnTo');
+          if (returnTo) {
+            navTo(returnTo);
+            safeRender(true);
+          } else {
+            showMainApp();
+          }
         } catch (err) {
           alert(err.message || t('error'));
         } finally {
