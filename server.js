@@ -4,7 +4,24 @@ Sentry.init({
   tracesSampleRate: 1.0
 });
 require('dotenv').config();
+
+// Fail fast if critical secrets are missing — a half-configured server is dangerous
+const REQUIRED_ENV_VARS = [
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+  'ANTHROPIC_API_KEY',
+  'PAYSTACK_SECRET_KEY',
+  'CLERK_SECRET_KEY',
+  'RESEND_API_KEY',
+];
+const missingVars = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error('Missing required environment variables:', missingVars);
+  process.exit(1);
+}
+
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
@@ -121,10 +138,47 @@ function serveCheckoutHtml(req, res, next) {
   });
 }
 
-app.use(cors());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+const ALLOWED_ORIGINS = [
+  'https://payoapp.org',
+  'https://www.payoapp.org',
+  'https://payo-production.up.railway.app',
+  'http://localhost:3000',
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // No Origin header = same-origin request, curl, webhook, or mobile app
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use('/webhooks/paystack', express.raw({ type: 'application/json' }));
 app.use('/webhooks/nowpayments', express.raw({ type: 'application/json' }));
-app.use(express.json());
+// Chat sends conversation history, which can outgrow 10kb — give it more room
+app.use('/chat', express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(generalLimiter);
 
 // Checkout HTML — must be registered before app.use('/checkout') API mount
@@ -202,6 +256,9 @@ app.get(/^\/checkout\/[^/]+\/[^/]+$/, serveCheckoutHtml);
 app.use((err, req, res, next) => {
   if (err.message === 'Unauthenticated') {
     return res.status(401).json({ success: false, error: 'Unauthenticated' });
+  }
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ success: false, error: 'Not allowed by CORS' });
   }
   console.error('Unhandled error:', err);
   res.status(500).json({ success: false, error: err.message || 'Internal server error' });

@@ -1,4 +1,5 @@
 const express = require('express');
+const sanitizeHtml = require('sanitize-html');
 const router = express.Router();
 const { parseChatIntent } = require('../claude');
 const { createAndSendInvoice } = require('../services/invoiceService');
@@ -33,15 +34,28 @@ router.post('/', async (req, res) => {
   try {
     const {
       message,
-      messages = [],
+      messages: rawMessages = [],
       freelancer_id,
       freelancer_email,
       freelancer_name,
     } = req.body;
 
-    if (!message?.trim()) {
-      return res.status(400).json({ success: false, error: 'Message is required' });
+    // Strip all HTML and cap length before anything touches Claude
+    const cleanMessage = sanitizeHtml(String(message || ''), {
+      allowedTags: [],
+      allowedAttributes: {},
+    })
+      .trim()
+      .slice(0, 500);
+
+    if (!cleanMessage) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message cannot be empty',
+      });
     }
+
+    const messages = Array.isArray(rawMessages) ? rawMessages.slice(-30) : [];
 
     if (!freelancer_id || !freelancer_email) {
       return res.status(400).json({
@@ -50,14 +64,14 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const parsed = await parseChatIntent(message.trim(), messages);
+    const parsed = await parseChatIntent(cleanMessage, messages);
     console.log('[CHAT DEBUG] Extracted fields:', JSON.stringify(parsed.extracted));
 
     if (parsed.intent === 'create_invoice') {
       const extracted = parsed.extracted || {};
       const missing = getMissingFields(extracted);
-      const currency = resolveCurrency(extracted, message.trim(), messages);
-      console.log('[CHAT DEBUG] Resolved currency:', currency, 'for message:', message);
+      const currency = resolveCurrency(extracted, cleanMessage, messages);
+      console.log('[CHAT DEBUG] Resolved currency:', currency, 'for message:', cleanMessage);
 
       if (missing.length > 0) {
         const reply =
@@ -72,7 +86,7 @@ router.post('/', async (req, res) => {
           reply,
           messages: [
             ...messages,
-            { role: 'user', content: message },
+            { role: 'user', content: cleanMessage },
             { role: 'assistant', content: reply },
           ],
         });
@@ -101,7 +115,7 @@ router.post('/', async (req, res) => {
           reply,
           messages: [
             ...messages,
-            { role: 'user', content: message },
+            { role: 'user', content: cleanMessage },
             { role: 'assistant', content: reply },
           ],
         });
@@ -126,7 +140,7 @@ router.post('/', async (req, res) => {
         payment_url,
         messages: [
           ...messages,
-          { role: 'user', content: message },
+          { role: 'user', content: cleanMessage },
           { role: 'assistant', content: reply },
         ],
       });
@@ -142,7 +156,7 @@ router.post('/', async (req, res) => {
       reply,
       messages: [
         ...messages,
-        { role: 'user', content: message },
+        { role: 'user', content: cleanMessage },
         { role: 'assistant', content: reply },
       ],
     });

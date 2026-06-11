@@ -77,6 +77,19 @@ router.post('/pay/:invoiceId', async (req, res) => {
     }
 
     const currency = (invoice.currency || 'NGN').toUpperCase();
+
+    // Duplicate payment prevention: reuse the existing link instead of
+    // generating a new Paystack transaction every time this is called
+    if (invoice.payment_url && invoice.status === 'unpaid') {
+      return res.json({
+        success: true,
+        payment_url: invoice.payment_url,
+        payment_reference: invoice.payment_reference,
+        authorization_url: invoice.payment_url,
+        provider: currency === 'USD' ? 'nowpayments' : 'paystack',
+        invoice,
+      });
+    }
     const { paymentUrl, reference, provider } = await createPaymentLink({
       currency,
       clientEmail: invoice.client_email || PAYO_PAYSTACK_FALLBACK_EMAIL,

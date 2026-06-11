@@ -57,6 +57,29 @@ async function createAndSendInvoice({
     }
   }
 
+  // Transaction limits
+  const transactionAmount = Number(amount);
+  if (!Number.isFinite(transactionAmount) || transactionAmount <= 0) {
+    throw new Error('A valid amount greater than zero is required');
+  }
+
+  const accountCreatedAt = profile?.created_at
+    ? new Date(profile.created_at).getTime()
+    : 0;
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  const isNewAccount = accountCreatedAt > 0 && Date.now() - accountCreatedAt < thirtyDays;
+
+  if (isNewAccount && transactionAmount > 500000 && normalizedCurrency === 'NGN') {
+    throw new Error(
+      'New account limit is ₦500,000 per transaction. Contact support@payoapp.org to increase your limit.'
+    );
+  }
+  if (transactionAmount > 10000000) {
+    throw new Error(
+      'Transaction amount exceeds maximum limit of ₦10,000,000. Contact support@payoapp.org.'
+    );
+  }
+
   const cleanClientEmail = trimOrNull(client_email);
   const rawClientPhone = trimOrNull(client_phone);
   const normalizedClientPhone = rawClientPhone ? normalizeNigerianPhone(rawClientPhone) : null;

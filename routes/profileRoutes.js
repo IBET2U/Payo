@@ -99,7 +99,18 @@ router.post('/bank', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthenticated' });
     }
 
-    const { bank_code, account_number, business_name } = req.body || {};
+    const raw = req.body || {};
+    const bank_code = String(raw.bank_code || '').trim().slice(0, 10);
+    const account_number = String(raw.account_number || '').trim().replace(/\D/g, '').slice(0, 10);
+    const business_name = String(raw.business_name || '').trim().slice(0, 100);
+
+    if (!bank_code || !account_number) {
+      return res.status(400).json({
+        success: false,
+        error: 'bank_code and account_number are required',
+      });
+    }
+
     const existing = await getProfile(userId);
 
     const verified = await verifyBankAccount(account_number, bank_code);
@@ -141,12 +152,31 @@ router.post('/', async (req, res) => {
     const { wallet_address, phone, name, email, language } = req.body;
 
     const existing = await getProfile(userId);
+
+    // Resolve (request value → existing → fallback), then sanitize
+    const resolvedEmail = email ?? existing?.email ?? req.auth?.sessionClaims?.email ?? null;
+    const resolvedName = name ?? existing?.name ?? null;
+    const resolvedPhone = phone !== undefined ? phone : existing?.phone ?? null;
+    const resolvedWallet =
+      wallet_address !== undefined ? wallet_address : existing?.wallet_address ?? null;
+    const resolvedLanguage = language ?? existing?.language ?? 'english';
+
+    const safeName = String(resolvedName || '').trim().slice(0, 100);
+    const safeEmail = String(resolvedEmail || '').trim().toLowerCase().slice(0, 200);
+    const safePhone = String(resolvedPhone || '').trim().replace(/[^\d+]/g, '').slice(0, 20);
+    const safeWallet = String(resolvedWallet || '').trim().slice(0, 120);
+    const safeLanguage = String(resolvedLanguage || 'english').trim().slice(0, 20);
+
+    if (safeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
+      return res.status(400).json({ success: false, error: 'A valid email is required' });
+    }
+
     const profile = await createOrUpdateProfile(userId, {
-      email: email ?? existing?.email ?? req.auth?.sessionClaims?.email ?? null,
-      name: name ?? existing?.name ?? null,
-      wallet_address: wallet_address !== undefined ? wallet_address : existing?.wallet_address ?? null,
-      phone: phone !== undefined ? phone : existing?.phone ?? null,
-      language: language ?? existing?.language ?? 'english',
+      email: safeEmail || null,
+      name: safeName || null,
+      wallet_address: safeWallet || null,
+      phone: safePhone || null,
+      language: safeLanguage || 'english',
     });
 
     res.json({
