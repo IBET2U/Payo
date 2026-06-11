@@ -122,24 +122,37 @@ async function createSubaccount(userId, { accountNumber, bankCode, businessName,
   // Save subaccount_code to freelancer_profiles immediately — payment routing
   // depends on this field. If it doesn't persist, Naira payments fall back to
   // the main Paystack account.
+  const profileRecord = {
+    id: userId,
+    email: freelancerEmail,
+    name: profile?.name || resolvedBusinessName,
+    business_name: resolvedBusinessName,
+    subaccount_code,
+    bank_code,
+    bank_name: bankName,
+    bank_account_number: account_number,
+    bank_account_name: verified.account_name,
+  };
+
   let { data: updatedProfile, error } = await supabase
     .from('freelancer_profiles')
-    .upsert(
-      {
-        id: userId,
-        email: freelancerEmail,
-        name: profile?.name || resolvedBusinessName,
-        business_name: resolvedBusinessName,
-        subaccount_code,
-        bank_code,
-        bank_name: bankName,
-        bank_account_number: account_number,
-        bank_account_name: verified.account_name,
-      },
-      { onConflict: 'id' }
-    )
+    .upsert(profileRecord, { onConflict: 'id' })
     .select()
     .single();
+
+  // If the business_name column hasn't been migrated yet, save without it —
+  // Paystack already stores the business name on the subaccount itself.
+  if (error && /business_name/i.test(error.message || '')) {
+    console.warn(
+      '[Subaccount] business_name column missing, saving without it. Run supabase/migrations/add_business_name.sql'
+    );
+    const { business_name: _omit, ...recordWithoutBusinessName } = profileRecord;
+    ({ data: updatedProfile, error } = await supabase
+      .from('freelancer_profiles')
+      .upsert(recordWithoutBusinessName, { onConflict: 'id' })
+      .select()
+      .single());
+  }
 
   if (error) throw error;
 
