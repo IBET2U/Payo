@@ -529,7 +529,7 @@
       cursor:pointer;
       box-shadow:0 14px 30px rgba(0,0,0,.35);
       animation:pulse 1.7s ease-in-out infinite;
-      z-index:20;
+      z-index:50; /* below the chat input (z-index:100) */
     }
     .aiFab span{
       font-weight:1000;
@@ -575,6 +575,8 @@
       display:flex;
       gap:10px;
       align-items:flex-end;
+      position:relative;
+      z-index:100; /* always above the floating P button */
     }
     textarea{
       resize:none;
@@ -922,8 +924,12 @@
     let userProfile = null;
     let profileFlags = { has_wallet: false, has_bank: false };
     let messages = [];
+    let chatMessages = messages; // persistent chat history — never cleared on re-render
     let chatLoading = false;
+    let chatDraft = ''; // chat input value preserved across re-renders
     let pendingRender = false;
+    let currentScreen = null; // which screen is currently rendered
+    let lastSignedInUserId = null; // guard: Clerk listener fires on every token refresh
     let earningsData = null;
     let communityFeedInterval = null;
     let communityPosts = [];
@@ -1716,6 +1722,21 @@
       pendingRender = false;
 
       const route = window.location.hash.replace('#', '') || 'home';
+
+      // BUG 3: floating P button must never block the chat screen
+      if (aiFab) aiFab.style.display = route === 'chat' ? 'none' : 'flex';
+
+      // BUG 2: never re-render the chat screen while it is alive — that wipes
+      // the input and message bubbles. Its DOM persists until you navigate away.
+      if (route === 'chat' && currentScreen === 'chat') {
+        const liveChatInput = document.getElementById('chatInput');
+        if (liveChatInput) {
+          if (document.activeElement === liveChatInput) return;
+          return;
+        }
+      }
+
+      currentScreen = route;
       if (route !== 'community') stopCommunityRefresh();
       if (route === 'home') return renderHome();
       if (route.startsWith('send')) return renderSendFlow(route);
@@ -2796,7 +2817,18 @@
     }
 
     function renderChat() {
+      // Never rebuild the chat while the user is typing in it
+      const existingInput = document.getElementById('chatInput');
+      if (existingInput && document.activeElement === existingInput) return;
+
       setActiveTab('chat');
+
+      // Restore full message history — chatMessages persists across renders
+      const historyHtml = (chatMessages || [])
+        .filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+        .map((m) => `<div class="bubble ${m.role === 'user' ? 'sent' : 'received'}">${escapeHtml(m.content)}</div>`)
+        .join('');
+
       host.innerHTML = `
         <div class="chatWrap">
           <div class="topbar" style="position:sticky;top:0">
@@ -2807,9 +2839,10 @@
           </div>
           <div class="chatBody" id="chatBody">
             <div class="bubble received" id="chatWelcome">${escapeHtml(t('chatWelcome'))}<div class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div>
+            ${historyHtml}
           </div>
           <div class="chatFoot">
-            <textarea class="input" id="chatInput" rows="1" placeholder="${escapeAttr(t('chatPlaceholder'))}"></textarea>
+            <textarea class="input" id="chatInput" rows="1" placeholder="${escapeAttr(t('chatPlaceholder'))}" oninput="this.dataset.value = this.value"></textarea>
             <button class="btn" style="padding:12px 14px" id="chatSend">${t('chatSend')}</button>
           </div>
         </div>
@@ -2821,6 +2854,13 @@
       const chatInput = document.getElementById('chatInput');
       const chatSend = document.getElementById('chatSend');
 
+      // Restore the draft the user was typing before any re-render
+      if (chatDraft) {
+        chatInput.value = chatDraft;
+        chatInput.dataset.value = chatDraft;
+      }
+      chatBody.scrollTop = chatBody.scrollHeight;
+
       chatInput.addEventListener('click', (e) => e.stopPropagation());
       chatInput.addEventListener('keydown', (e) => {
         e.stopPropagation();
@@ -2828,6 +2868,8 @@
       });
       chatInput.addEventListener('input', (e) => {
         e.stopPropagation();
+        chatDraft = chatInput.value;
+        chatInput.dataset.value = chatInput.value;
         chatInput.style.height = 'auto';
         chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
       });
@@ -2850,7 +2892,10 @@
           addBubble(t('error'), 'received');
           return;
         }
+        // Clearing here is allowed: the user just sent the message
         chatInput.value = '';
+        chatInput.dataset.value = '';
+        chatDraft = '';
         chatInput.style.height = 'auto';
         addBubble(text, 'sent');
         chatLoading = true;
@@ -2870,6 +2915,7 @@
           const j = await res.json();
           if (!res.ok) throw new Error(j.error || t('error'));
           messages = j.messages || messages;
+          chatMessages = messages;
           addBubble(j.reply || 'Done', 'received');
         } catch(err) {
           addBubble(t('error'), 'received');
@@ -3594,15 +3640,21 @@
 
         window.Clerk.addListener(async ({ user }) => {
           if (!user) {
+            lastSignedInUserId = null;
             authScreen.classList.remove('hidden');
             appEl.classList.add('hidden');
             mountClerkAuth();
             return;
           }
+          // Clerk fires this on every session/token refresh — only treat it as
+          // a sign-in once per user, otherwise the app resets to home mid-use.
+          if (lastSignedInUserId === user.id) return;
+          lastSignedInUserId = user.id;
           await onClerkSignedIn(user);
         });
 
         if (window.Clerk.user) {
+          lastSignedInUserId = window.Clerk.user.id;
           await onClerkSignedIn(window.Clerk.user);
         } else {
           mountClerkAuth();
