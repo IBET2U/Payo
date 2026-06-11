@@ -120,9 +120,6 @@ function isCheckoutPublicPath(path, method) {
   if (method === 'GET' && /^\/api\/[^/]+\/[^/]+$/.test(path)) return true;
   if (method === 'GET' && isCheckoutProductPath(path)) return true;
   if (method === 'POST' && /^\/[^/]+\/pay$/.test(path)) return true;
-  if (method === 'POST' && (path.startsWith('/confirm/') || path.startsWith('/checkout/confirm/'))) {
-    return true;
-  }
   if (method === 'GET' && (path.startsWith('/download/') || path.startsWith('/checkout/download/'))) {
     return true;
   }

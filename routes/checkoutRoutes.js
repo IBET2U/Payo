@@ -10,7 +10,6 @@ const {
   getSellerUsername,
   buildCheckoutUrl,
   calculatePricing,
-  confirmCheckoutOrder,
   DOWNLOAD_LIMIT,
 } = require('../services/checkoutService');
 const { normalizeCurrency } = require('../lib/currency');
@@ -40,9 +39,23 @@ router.get('/data/:username/:slug', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Checkout not found' });
     }
 
+    // Only expose what the public checkout page needs — never download_url,
+    // seller_id, internal stats, etc.
     const checkout = {
-      ...data,
+      product_name: data.product_name,
+      description: data.description,
       price: Number(data.price),
+      currency: data.currency,
+      is_digital: data.is_digital,
+      add_vat: data.add_vat,
+      vat_rate: data.vat_rate,
+      collect_name: data.collect_name,
+      collect_email: data.collect_email,
+      collect_phone: data.collect_phone,
+      thank_you_message: data.thank_you_message,
+      slug: data.slug,
+      stock_limit: data.stock_limit,
+      stock_remaining: data.stock_remaining,
       seller_name: profile?.name || profile?.business_name || sellerUsername,
     };
 
@@ -381,22 +394,6 @@ router.get('/download/:token', async (req, res) => {
   } catch (err) {
     console.error('[Checkout] Download failed:', err.message);
     res.status(500).send('Something went wrong. Please try again later.');
-  }
-});
-
-router.post('/confirm/:orderId', async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const result = await confirmCheckoutOrder(orderId);
-
-    if (!result.handled) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Checkout] Confirm failed:', err.message);
-    res.status(500).json({ success: false, error: err.message });
   }
 });
 

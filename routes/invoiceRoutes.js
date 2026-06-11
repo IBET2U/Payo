@@ -131,12 +131,18 @@ router.post('/pay/:invoiceId', async (req, res) => {
 
 router.get('/:freelancer_id', async (req, res) => {
   try {
+    const authUserId = req.auth?.userId;
     const { freelancer_id } = req.params;
+
+    // Users may only read their own invoices
+    if (!authUserId || freelancer_id !== authUserId) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     const { data, error } = await supabase
       .from('invoices')
       .select('*')
-      .eq('freelancer_id', freelancer_id)
+      .eq('freelancer_id', authUserId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
