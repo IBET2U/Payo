@@ -2117,7 +2117,14 @@
               return;
             }
             if (!res.ok || !j.success) {
-              throw new Error(j.error || j.message || 'Transfer failed');
+              // Insufficient wallet balance — offer to fund via Paystack
+              const errMsg = j.error || j.message || '';
+              if (errMsg.toLowerCase().includes('insufficient') || errMsg.toLowerCase().includes('balance')) {
+                sessionStorage.setItem('sendFlow', JSON.stringify(state));
+                navTo('send/fund');
+                return;
+              }
+              throw new Error(errMsg || 'Transfer failed');
             }
             await handleTransferSuccess(j);
           } catch (err) {
@@ -2127,6 +2134,45 @@
           }
         };
         wireFormInputs(host);
+        return;
+      }
+
+      if (step === 'fund') {
+        const amt = state.amount || 0;
+        host.innerHTML = `
+          <div class="screen">
+            <div class="sectionTitle">Fund Wallet</div>
+            <div class="card" style="padding:16px">
+              <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Your wallet balance is too low to complete this transfer. Pay via Paystack to top up instantly — then retry your send.</div>
+              <div style="font-size:12px;color:var(--muted)">Amount to top up</div>
+              <div style="font-size:24px;font-weight:900;margin:4px 0 16px">${formatAmount(amt, 'NGN')}</div>
+              <button class="btn" type="button" id="fundPayBtn" style="width:100%">Pay via Paystack →</button>
+              <button class="btn secondary" type="button" id="fundCancelBtn" style="width:100%;margin-top:10px">${t('cancel')}</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;padding:0 16px">After payment, return to this screen and tap "Send Money" again — your wallet will be funded.</div>
+          </div>
+        `;
+        document.getElementById('fundCancelBtn').onclick = () => { sessionStorage.removeItem('sendFlow'); navTo('home'); };
+        document.getElementById('fundPayBtn').onclick = async () => {
+          const btn = document.getElementById('fundPayBtn');
+          try {
+            btn.disabled = true;
+            btn.textContent = 'Opening Paystack…';
+            const token = await window.Clerk.session.getToken();
+            const res = await fetch('/transfers/topup', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: amt }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.success) throw new Error(j.error || 'Could not create payment link');
+            window.location.href = j.payment_url;
+          } catch (err) {
+            alert(err.message || t('error'));
+            btn.disabled = false;
+            btn.textContent = 'Pay via Paystack →';
+          }
+        };
         return;
       }
 

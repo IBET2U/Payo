@@ -5,6 +5,7 @@ const {
   resolveRecipient,
   initiateTransfer,
   getTransferHistory,
+  createWalletTopup,
 } = require('../services/transferService');
 const { updateUserEarnings } = require('../services/earningsService');
 
@@ -75,6 +76,21 @@ router.post('/send', async (req, res) => {
     return res.json({ success: true, ...result });
   } catch (err) {
     console.error('[TRANSFER ERROR]', err.message, err.stack);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/topup', async (req, res) => {
+  try {
+    const userId = req.auth?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    const { amount } = req.body || {};
+    const { paymentUrl, reference } = await createWalletTopup(userId, amount);
+    return res.json({ success: true, payment_url: paymentUrl, reference });
+  } catch (err) {
+    console.error('[Topup] Error:', err.message);
     return res.status(400).json({ success: false, error: err.message });
   }
 });

@@ -83,6 +83,63 @@ router.post('/', async (req, res) => {
   }
 
   const { data } = event;
+
+  // Wallet top-up — handle before invoice lookup
+  const topupUserId = data?.metadata?.topup_user_id;
+  if (topupUserId) {
+    const reference = data?.reference;
+    const amtNgn = Number(data?.amount || 0) / 100;
+
+    if (!reference || amtNgn <= 0) {
+      console.error('[Paystack Webhook] Invalid topup data');
+      return res.status(400).json({ success: false, error: 'Invalid topup data' });
+    }
+
+    try {
+      // Dedup: check if this reference was already processed
+      const { data: existing } = await supabase
+        .from('transfers')
+        .select('id')
+        .eq('provider_reference', reference)
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Webhook Topup] Reference ${reference} already processed`);
+        return res.status(200).json({ success: true, message: 'Already processed' });
+      }
+
+      // Credit wallet atomically
+      const { data: profile } = await supabase
+        .from('freelancer_profiles')
+        .select('wallet_balance')
+        .eq('id', topupUserId)
+        .maybeSingle();
+
+      const current = Number(profile?.wallet_balance || 0);
+      await supabase
+        .from('freelancer_profiles')
+        .update({ wallet_balance: current + amtNgn })
+        .eq('id', topupUserId);
+
+      // Log for dedup + transfer history
+      await supabase.from('transfers').insert({
+        sender_id: topupUserId,
+        recipient_type: 'wallet_topup',
+        amount: amtNgn,
+        status: 'success',
+        provider: 'paystack',
+        provider_reference: reference,
+        reason: 'Wallet top-up via Paystack',
+      });
+
+      console.log(`[Webhook Topup] Credited ₦${amtNgn} to wallet of ${topupUserId}`);
+      return res.status(200).json({ success: true, message: 'Wallet topped up' });
+    } catch (err) {
+      console.error('[Webhook Topup] Error:', err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   const invoiceId = extractInvoiceId(data?.metadata);
 
   if (!invoiceId) {

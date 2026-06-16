@@ -2,6 +2,7 @@ const axios = require('axios');
 const supabase = require('../supabase');
 const { normalizeNigerianPhone } = require('../whatsapp');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
+const { initializeWalletTopup } = require('../payments');
 
 function looksLikeEmail(value) {
   const v = String(value || '').trim();
@@ -433,9 +434,38 @@ async function getTransferHistory(senderId, limit = 50) {
   return data || [];
 }
 
+async function createWalletTopup(userId, amount) {
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt <= 0) {
+    throw new Error('A valid positive amount is required');
+  }
+  if (amt > MAX_TRANSFER_AMOUNT) {
+    throw new Error('Amount exceeds the maximum limit of ₦10,000,000.');
+  }
+
+  const { data: profile } = await supabase
+    .from('freelancer_profiles')
+    .select('email, name')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const email = (profile?.email && String(profile.email).includes('@'))
+    ? profile.email
+    : 'payments@payoapp.org';
+
+  const { authorizationUrl, reference } = await initializeWalletTopup({
+    email,
+    amount: amt,
+    userId,
+  });
+
+  return { paymentUrl: authorizationUrl, reference };
+}
+
 module.exports = {
   resolveRecipient,
   initiateTransfer,
   createTransferRecipient,
   getTransferHistory,
+  createWalletTopup,
 };
