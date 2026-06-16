@@ -231,6 +231,16 @@ app.use('/community', communityLimiter, (req, res, next) => {
 
 app.use('/ussd', ussdRoutes);
 
+// Root: serve landing page — client-side Clerk script redirects logged-in users to /app
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+// /app: serve the main app shell (Clerk-protected client-side)
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Static files only for non-API paths (never intercept /profile, /chat, etc.)
 app.use((req, res, next) => {
   if (isApiRoute(req.path)) {

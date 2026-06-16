@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Payo is your AI payment agent. Invoice clients, follow up automatically, and get paid — Naira or USD." />
+  <title>Payo — Stop Chasing Clients. Start Getting Paid.</title>
+  <link rel="preconnect" href="https://clerk.payoapp.org" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b141a;
+      --bg-card: #111c24;
+      --bg-mid: #1f2c34;
+      --green: #00a884;
+      --green-dim: #007a62;
+      --gold: #d4a827;
+      --gold-dark: #b8860b;
+      --red: #e53935;
+      --white: #ffffff;
+      --muted: #8696a0;
+      --border: #2a3942;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--white);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: rgba(11, 20, 26, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .nav-logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -0.5px;
+      text-decoration: none;
+    }
+
+    .nav-cta {
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .nav-cta:hover { background: #00c49a; }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 24px 80px;
+      overflow: hidden;
+    }
+
+    .hero-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 168, 132, 0.15);
+      border: 1px solid rgba(0, 168, 132, 0.3);
+      color: var(--green);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+    }
+
+    h1 span { color: var(--green); }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 16px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s;
+      min-width: 200px;
+      text-align: center;
+    }
+    .btn-primary:hover { background: #00c49a; transform: translateY(-1px); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 16px 32px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      text-decoration: none;
+      transition: all 0.2s;
+      min-width: 200px;
+      text-align: center;
+    }
+    .btn-outline:hover { border-color: var(--green); color: var(--green); }
+
+    .hero-trust {
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    /* ── SECTION COMMON ── */
+    section { padding: 80px 24px; }
+
+    .section-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    .section-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 520px;
+      margin-bottom: 56px;
+    }
+
+    /* ── PROBLEM ── */
+    #problem { background: var(--bg-card); }
+
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+
+    .pain-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .pain-card:hover { border-color: var(--red); transform: translateY(-2px); }
+
+    .pain-icon {
+      width: 44px; height: 44px;
+      background: rgba(229, 57, 53, 0.12);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .pain-text {
+      font-size: 0.95rem;
+      color: #c5ced3;
+      line-height: 1.6;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #how { background: var(--bg-mid); }
+
+    .steps-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .step {
+      flex: 1;
+      min-width: 220px;
+      max-width: 300px;
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .step-icon-wrap {
+      width: 72px; height: 72px;
+      background: rgba(0, 168, 132, 0.12);
+      border: 2px solid rgba(0, 168, 132, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin: 0 auto 20px;
+    }
+
+    .step-number {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .step h3 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .step-arrow {
+      display: flex;
+      align-items: center;
+      padding-top: 36px;
+      color: var(--green);
+      font-size: 1.6rem;
+      opacity: 0.5;
+    }
+
+    @media (max-width: 600px) {
+      .step-arrow { display: none; }
+    }
+
+    /* ── FEATURES ── */
+    #features { background: var(--bg); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.25s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: var(--green); transform: translateY(-2px); }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 4px;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .feature-card p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── PIONEER ── */
+    #pioneer {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+      padding: 80px 24px;
+    }
+
+    .pioneer-inner {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .pioneer-badge {
+      display: inline-block;
+      background: rgba(0,0,0,0.2);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .pioneer-inner h2 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      color: #0b141a;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .pioneer-inner p {
+      color: rgba(11, 20, 26, 0.75);
+      font-size: 1rem;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+
+    .btn-dark {
+      display: inline-block;
+      background: #0b141a;
+      color: var(--white);
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 16px 36px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-dark:hover { background: #1f2c34; transform: translateY(-1px); }
+
+    .pioneer-spots {
+      margin-top: 20px;
+      font-size: 0.82rem;
+      color: rgba(11, 20, 26, 0.6);
+      font-weight: 600;
+    }
+
+    /* ── COMMUNITY ── */
+    #community { background: var(--bg-card); }
+
+    .community-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .community-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .community-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .community-avatar {
+      width: 38px; height: 38px;
+      background: var(--green-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .community-name-time {
+      flex: 1;
+      margin-left: 12px;
+    }
+
+    .community-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .community-time {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .community-badge {
+      font-size: 1.2rem;
+    }
+
+    .community-message {
+      font-size: 0.9rem;
+      color: #c5ced3;
+      line-height: 1.6;
+    }
+
+    .community-amount {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--green);
+      margin-top: 4px;
+    }
+
+    #community-loading {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 40px 0;
+      grid-column: 1 / -1;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: #07101a;
+      padding: 60px 24px 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+
+    .footer-brand .footer-logo {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--green);
+      text-decoration: none;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .footer-brand p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      max-width: 240px;
+      line-height: 1.6;
+    }
+
+    .footer-links-col h4 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .footer-links-col a {
+      display: block;
+      color: #8696a0;
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      transition: color 0.15s;
+    }
+    .footer-links-col a:hover { color: var(--white); }
+
+    .footer-socials {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .social-link {
+      width: 36px; height: 36px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: border-color 0.2s;
+    }
+    .social-link:hover { border-color: var(--green); }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-bottom p {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    /* ── CANVAS ANIMATION ── */
+    canvas { display: block; }
+
+    /* ── SCROLL FADE IN ── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── MOBILE TWEAKS ── */
+    @media (max-width: 480px) {
+      nav { padding: 14px 16px; }
+      section { padding: 64px 16px; }
+      .hero-buttons { flex-direction: column; align-items: center; }
+      .btn-primary, .btn-outline { width: 100%; max-width: 320px; }
+      .steps-row { flex-direction: column; align-items: center; }
+      .footer-top { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Clerk redirect for logged-in users -->
+<script>
+  (function () {
+    var pub = '';
+    fetch('/config')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        pub = d.clerkPublishableKey || '';
+        if (!pub) return;
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
+        s.setAttribute('data-clerk-publishable-key', pub);
+        s.onload = function () {
+          window.Clerk.load().then(function () {
+            if (window.Clerk.user) {
+              window.location.replace('/app');
+            }
+          });
+        };
+        document.head.appendChild(s);
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="/" class="nav-logo">Payo</a>
+  <a href="/sign-up" class="nav-cta">Get Started Free →</a>
+</nav>
+
+<!-- ── SECTION 1: HERO ── -->
+<section id="hero">
+  <canvas class="hero-canvas" id="heroCanvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-eyebrow">AI Payment Agent</div>
+    <h1>Stop chasing clients.<br /><span>Start getting paid.</span></h1>
+    <p class="hero-sub">
+      Payo is your AI payment agent. Tell it who owes you — it invoices them,
+      follows up automatically, and gets you paid. Naira or USD.
+    </p>
+    <div class="hero-buttons">
+      <a href="/sign-up" class="btn-primary">Get Started Free →</a>
+      <a href="#how" class="btn-outline">See How It Works</a>
+    </div>
+    <p class="hero-trust">🔒 No card required &nbsp;·&nbsp; Free to start &nbsp;·&nbsp; Takes 2 minutes</p>
+  </div>
+</section>
+
+<!-- ── SECTION 2: THE PROBLEM ── -->
+<section id="problem">
+  <div class="section-inner">
+    <span class="section-tag">The Problem</span>
+    <h2 class="section-title">Sound familiar?</h2>
+    <p class="section-sub">You're not alone. Nigerian professionals lose hours every week chasing money that's already owed to them.</p>
+
+    <div class="pain-grid">
+      <div class="pain-card fade-in">
+        <div class="pain-icon">😤</div>
+        <p class="pain-text">You did the work. Client hasn't paid. You've sent 3 follow-up messages and they keep saying "I'll sort it."</p>
+      </div>
+      <div class="pain-card fade-in">
+        <div class="pain-icon">🌍</div>
+        <p class="pain-text">Your international client says "I'll pay soon" for the third week running — and you have no way to follow up professionally.</p>
+      </div>
+      <div class="pain-card fade-in">
+        <div class="pain-icon">📋</div>
+        <p class="pain-text">You have no proof of income for your visa or loan application because all your payments come through WhatsApp.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 3: HOW IT WORKS ── -->
+<section id="how">
+  <div class="section-inner">
+    <span class="section-tag">How It Works</span>
+    <h2 class="section-title">How Payo works</h2>
+    <p class="section-sub">Three steps. Seconds to set up. Automatic from there.</p>
+
+    <div class="steps-row">
+      <div class="step fade-in">
+        <div class="step-icon-wrap">💬</div>
+        <div class="step-number">Step 1</div>
+        <h3>Tell Payo</h3>
+        <p>Type naturally in Pidgin or English. "Send invoice to Emeka for ₦150k for the website design."</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step fade-in">
+        <div class="step-icon-wrap">📄</div>
+        <div class="step-number">Step 2</div>
+        <h3>Payo invoices</h3>
+        <p>A professional invoice goes to your client via WhatsApp and email — instantly, looking clean.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step fade-in">
+        <div class="step-icon-wrap">💰</div>
+        <div class="step-number">Step 3</div>
+        <h3>You get paid</h3>
+        <p>Payo follows up automatically with polite reminders until the money lands in your account.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 4: FEATURES ── -->
+<section id="features">
+  <div class="section-inner">
+    <span class="section-tag">Features</span>
+    <h2 class="section-title">Everything you need to get paid</h2>
+    <p class="section-sub">Built specifically for Nigerian freelancers, consultants, and business owners.</p>
+
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-icon">📱</div>
+        <h3>Invoice via WhatsApp</h3>
+        <p>Clients receive a payment link directly on WhatsApp. No app download, no friction — they pay in seconds.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🏦</div>
+        <h3>Naira payments</h3>
+        <p>Payments land directly in your Nigerian bank account. Powered by Paystack with zero drama.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🌐</div>
+        <h3>International USD</h3>
+        <p>Accept USDC stablecoin payments from anywhere in the world. No forex headaches.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">🛒</div>
+        <h3>Payo Checkout</h3>
+        <p>Sell digital products, courses, or files with automatic delivery after payment. Set it once.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">💸</div>
+        <h3>Earn every month</h3>
+        <p>Get 20% of Payo's revenue shared back to you monthly. The more you use it, the more you earn.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon">📶</div>
+        <h3>Works offline</h3>
+        <p>USSD access from any phone, no internet required. Works on every network in Nigeria.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 5: PIONEER 100 ── -->
+<section id="pioneer">
+  <div class="pioneer-inner">
+    <div class="pioneer-badge">⚡ Limited Time — Pioneer Offer</div>
+    <h2>First 100 users get ₦2,000 cashback</h2>
+    <p>
+      After your first payment. Plus lifetime reduced fees
+      and a permanent Pioneer badge on your profile.
+    </p>
+    <a href="/sign-up" class="btn-dark">Claim Your Spot →</a>
+    <p class="pioneer-spots" id="pioneer-spots">🔥 Spots filling up fast</p>
+  </div>
+</section>
+
+<!-- ── SECTION 6: COMMUNITY ── -->
+<section id="community">
+  <div class="section-inner">
+    <span class="section-tag">Community</span>
+    <h2 class="section-title">Nigerian professionals winning on Payo right now</h2>
+    <p class="section-sub">Real payments. Real people. The Payo community celebrates every win.</p>
+
+    <div class="community-grid" id="community-grid">
+      <div id="community-loading">Loading recent wins…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 7: FOOTER ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">Payo</a>
+        <p>Your AI payment agent. Built for Nigerian professionals who deserve to get paid on time.</p>
+        <div class="footer-socials" style="margin-top:16px;">
+          <a href="#" class="social-link" title="Twitter/X">𝕏</a>
+          <a href="#" class="social-link" title="Instagram">📸</a>
+          <a href="#" class="social-link" title="WhatsApp">💬</a>
+        </div>
+      </div>
+
+      <div class="footer-links-col">
+        <h4>Product</h4>
+        <a href="#how">How It Works</a>
+        <a href="#features">Features</a>
+        <a href="#pioneer">Pioneer 100</a>
+        <a href="/sign-up">Get Started</a>
+      </div>
+
+      <div class="footer-links-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="https://payoapp.org" target="_blank" rel="noopener">payoapp.org</a>
+        <a href="mailto:invoices@payoapp.org">invoices@payoapp.org</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2026 Payo — Built for Nigerian professionals</p>
+      <p style="color:#2a3942;">
+        <a href="#" style="color:#8696a0;text-decoration:none;margin-right:16px;">Privacy</a>
+        <a href="#" style="color:#8696a0;text-decoration:none;">Terms</a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ── HERO PARTICLE CANVAS ── */
+  (function () {
+    var canvas = document.getElementById('heroCanvas');
+    var ctx = canvas.getContext('2d');
+    var particles = [];
+    var W, H;
+
+    function resize() {
+      W = canvas.width = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+    }
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+
+    function Particle() {
+      this.reset();
+    }
+    Particle.prototype.reset = function () {
+      this.x = rand(0, W);
+      this.y = rand(0, H);
+      this.r = rand(0.5, 2.2);
+      this.vx = rand(-0.2, 0.2);
+      this.vy = rand(-0.3, -0.05);
+      this.alpha = rand(0.1, 0.5);
+    };
+    Particle.prototype.update = function () {
+      this.x += this.vx;
+      this.y += this.vy;
+      if (this.y < -4 || this.x < -4 || this.x > W + 4) this.reset();
+    };
+    Particle.prototype.draw = function () {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,168,132,' + this.alpha + ')';
+      ctx.fill();
+    };
+
+    function init() {
+      resize();
+      particles = [];
+      var count = Math.min(80, Math.floor((W * H) / 12000));
+      for (var i = 0; i < count; i++) particles.push(new Particle());
+    }
+
+    var gradAngle = 0;
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      /* soft radial gradient overlay */
+      gradAngle += 0.003;
+      var cx = W * 0.5 + Math.cos(gradAngle) * W * 0.15;
+      var cy = H * 0.5 + Math.sin(gradAngle * 0.7) * H * 0.1;
+      var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.6);
+      grad.addColorStop(0, 'rgba(0,168,132,0.07)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      particles.forEach(function (p) { p.update(); p.draw(); });
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+  })();
+
+  /* ── SCROLL FADE IN ── */
+  (function () {
+    var els = document.querySelectorAll('.fade-in');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+
+  /* ── COMMUNITY FEED ── */
+  (function () {
+    var grid = document.getElementById('community-grid');
+
+    var PLACEHOLDERS = [
+      {
+        display_name: 'Chukwuemeka A.',
+        message: 'Finally got paid for that branding project I finished two months ago. Payo sent 4 reminders — I sent zero.',
+        amount: 180000,
+        currency: 'NGN',
+        tier: '🥇',
+        created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
+      },
+      {
+        display_name: 'Adaeze O.',
+        message: 'My UK client paid my USD invoice in 10 minutes. No bank drama. This is wild.',
+        amount: 500,
+        currency: 'USD',
+        tier: '🥈',
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        display_name: 'Tunde B.',
+        message: 'Set up my Payo Checkout for my Notion templates. Woke up to 3 payments. 🙏',
+        amount: 45000,
+        currency: 'NGN',
+        tier: '🥉',
+        created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+
+    function timeAgo(iso) {
+      var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function formatAmount(amount, currency) {
+      if (currency === 'NGN') return '₦' + Number(amount).toLocaleString('en-NG');
+      if (currency === 'USD') return '$' + Number(amount).toFixed(2);
+      return amount + ' ' + currency;
+    }
+
+    function initials(name) {
+      return (name || '?').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    }
+
+    function renderCards(posts) {
+      grid.innerHTML = '';
+      posts.slice(0, 3).forEach(function (post) {
+        var name = post.display_name || post.anonymous_name || 'Anonymous';
+        var card = document.createElement('div');
+        card.className = 'community-card fade-in';
+        card.innerHTML =
+          '<div class="community-card-top">' +
+            '<div class="community-avatar">' + initials(name) + '</div>' +
+            '<div class="community-name-time">' +
+              '<div class="community-name">' + escHtml(name) + '</div>' +
+              '<div class="community-time">' + timeAgo(post.created_at) + '</div>' +
+            '</div>' +
+            '<div class="community-badge">' + (post.tier || '🏅') + '</div>' +
+          '</div>' +
+          '<p class="community-message">' + escHtml(post.message || '') + '</p>' +
+          '<div class="community-amount">' + formatAmount(post.amount, post.currency) + ' received ✅</div>';
+        grid.appendChild(card);
+      });
+
+      /* re-run fade-in on new cards */
+      grid.querySelectorAll('.fade-in').forEach(function (el) {
+        el.classList.add('visible');
+      });
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    fetch('/community/feed')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var posts = (data && data.posts && data.posts.length) ? data.posts : PLACEHOLDERS;
+        renderCards(posts);
+      })
+      .catch(function () {
+        renderCards(PLACEHOLDERS);
+      });
+  })();
+</script>
+</body>
+</html>
