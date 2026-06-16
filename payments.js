@@ -121,4 +121,54 @@ async function initializeWalletTopup({ email, amount, userId }) {
   };
 }
 
-module.exports = { initializePayment, initializeWalletTopup, toSmallestUnit };
+// Collect payment from sender and carry the full transfer intent in metadata
+// so the webhook can execute the transfer automatically on confirmation.
+async function initializeSendPayment({
+  email, amount, senderId,
+  recipientType, recipientId, recipientPhone,
+  accountNumber, bankCode, recipientName, reason,
+}) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) throw new Error('PAYSTACK_SECRET_KEY is not configured');
+
+  const reference = `paysend_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const payload = {
+    email,
+    amount: Math.round(Number(amount) * 100),
+    currency: 'NGN',
+    reference,
+    metadata: {
+      pending_send_user_id:      String(senderId       || ''),
+      pending_send_amount:       String(amount         || ''),
+      pending_send_recipient_type: String(recipientType || ''),
+      pending_send_recipient_id: String(recipientId    || ''),
+      pending_send_recipient_phone: String(recipientPhone || ''),
+      pending_send_account_number: String(accountNumber || ''),
+      pending_send_bank_code:    String(bankCode       || ''),
+      pending_send_name:         String(recipientName  || ''),
+      pending_send_reason:       String(reason         || ''),
+    },
+  };
+
+  if (process.env.PAYSTACK_CALLBACK_URL) {
+    payload.callback_url = process.env.PAYSTACK_CALLBACK_URL;
+  }
+
+  const response = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+  if (!response.ok || !result.status) {
+    throw new Error(result.message || 'Failed to initialize send payment');
+  }
+
+  return { authorizationUrl: result.data.authorization_url, reference: result.data.reference };
+}
+
+module.exports = { initializePayment, initializeWalletTopup, initializeSendPayment, toSmallestUnit };

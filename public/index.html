@@ -2117,12 +2117,25 @@
               return;
             }
             if (!res.ok || !j.success) {
-              // Insufficient wallet balance — offer to fund via Paystack
               const errMsg = j.error || j.message || '';
               if (errMsg.toLowerCase().includes('insufficient') || errMsg.toLowerCase().includes('balance')) {
-                sessionStorage.setItem('sendFlow', JSON.stringify(state));
-                navTo('send/fund');
-                return;
+                // Wallet empty — collect payment directly via Paystack and auto-execute transfer
+                sendBtn.textContent = 'Opening Paystack…';
+                try {
+                  const pr = await fetch('/transfers/pay-and-send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await window.Clerk.session.getToken()}` },
+                    body: JSON.stringify({ recipient: state.recipient, amount: state.amount, reason: state.reason || '' }),
+                  });
+                  const pj = await pr.json().catch(() => ({}));
+                  if (pj.needs_bank_details) { sessionStorage.setItem('sendFlow', JSON.stringify(state)); navTo('send/bank'); return; }
+                  if (!pr.ok || !pj.success) throw new Error(pj.error || 'Failed to start payment');
+                  sessionStorage.removeItem('sendFlow');
+                  window.location.href = pj.payment_url;
+                  return;
+                } catch (payErr) {
+                  throw payErr;
+                }
               }
               throw new Error(errMsg || 'Transfer failed');
             }
@@ -2130,7 +2143,7 @@
           } catch (err) {
             alert(err.message || t('error'));
           } finally {
-            sendBtn.disabled = false;
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Confirm Send'; }
           }
         };
         wireFormInputs(host);
@@ -2221,13 +2234,27 @@
               throw new Error(j.message || j.error || 'Bank details still required');
             }
             if (!res.ok || !j.success) {
-              throw new Error(j.error || j.message || 'Transfer failed');
+              const errMsg = j.error || j.message || '';
+              if (errMsg.toLowerCase().includes('insufficient') || errMsg.toLowerCase().includes('balance')) {
+                bankSendBtn.textContent = 'Opening Paystack…';
+                const pr = await fetch('/transfers/pay-and-send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await window.Clerk.session.getToken()}` },
+                  body: JSON.stringify({ recipient: state.recipient, amount: state.amount, reason: state.reason || '', accountNumber, bankCode, name }),
+                });
+                const pj = await pr.json().catch(() => ({}));
+                if (!pr.ok || !pj.success) throw new Error(pj.error || 'Failed to start payment');
+                sessionStorage.removeItem('sendFlow');
+                window.location.href = pj.payment_url;
+                return;
+              }
+              throw new Error(errMsg || 'Transfer failed');
             }
             await handleTransferSuccess(j);
           } catch (err) {
             alert(err.message || t('error'));
           } finally {
-            bankSendBtn.disabled = false;
+            if (bankSendBtn) { bankSendBtn.disabled = false; bankSendBtn.textContent = t('confirm'); }
           }
         };
         (async () => {

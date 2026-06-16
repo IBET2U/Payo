@@ -140,6 +140,109 @@ router.post('/', async (req, res) => {
     }
   }
 
+  // Pay-and-send: sender paid via Paystack — execute the queued transfer now
+  const pendingSenderId = data?.metadata?.pending_send_user_id;
+  if (pendingSenderId) {
+    const reference   = data?.reference;
+    const amtNgn      = Number(data?.amount || 0) / 100;
+    const meta        = data?.metadata || {};
+    const recipientType = meta.pending_send_recipient_type;
+    const recipientId   = meta.pending_send_recipient_id;
+    const reason        = meta.pending_send_reason || null;
+
+    if (!reference || amtNgn <= 0) {
+      console.error('[Webhook PendingSend] Invalid data');
+      return res.status(400).json({ success: false, error: 'Invalid send payment data' });
+    }
+
+    try {
+      // Dedup
+      const { data: existing } = await supabase
+        .from('transfers')
+        .select('id')
+        .eq('provider_reference', reference)
+        .maybeSingle();
+      if (existing) {
+        return res.status(200).json({ success: true, message: 'Already processed' });
+      }
+
+      if (recipientType === 'payo' && recipientId) {
+        // Credit recipient's Payo wallet
+        const { data: recipient } = await supabase
+          .from('freelancer_profiles')
+          .select('wallet_balance, phone, email, name')
+          .eq('id', recipientId)
+          .maybeSingle();
+
+        if (recipient) {
+          await supabase
+            .from('freelancer_profiles')
+            .update({ wallet_balance: Number(recipient.wallet_balance || 0) + amtNgn })
+            .eq('id', recipientId);
+        }
+
+        await supabase.from('transfers').insert({
+          sender_id:                pendingSenderId,
+          recipient_type:           'payo',
+          recipient_id:             recipientId,
+          recipient_phone_or_email: recipient?.email || recipient?.phone || meta.pending_send_recipient_phone || null,
+          amount:                   amtNgn,
+          reason,
+          status:                   'success',
+          provider:                 'paystack_collect',
+          provider_reference:       reference,
+        });
+
+      } else if (recipientType === 'external') {
+        const accountNumber = meta.pending_send_account_number;
+        const bankCode      = meta.pending_send_bank_code;
+        const recipientName = meta.pending_send_name || 'Payo Recipient';
+        let providerRef     = reference;
+        let transferStatus  = 'success';
+
+        if (accountNumber && bankCode) {
+          try {
+            const { createTransferRecipient } = require('../services/transferService');
+            const axios       = require('axios');
+            const recipientCode = await createTransferRecipient(accountNumber, bankCode, recipientName);
+            const ps = axios.create({
+              baseURL: 'https://api.paystack.co',
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+              timeout: 20000,
+            });
+            const transferRes = await ps.post('/transfer', {
+              source: 'balance',
+              amount: Math.round(amtNgn * 100),
+              recipient: recipientCode,
+              reason: reason || undefined,
+            });
+            providerRef = transferRes?.data?.data?.transfer_code || reference;
+          } catch (txErr) {
+            console.error('[Webhook PendingSend] External transfer failed:', txErr.message);
+            transferStatus = 'failed';
+          }
+        }
+
+        await supabase.from('transfers').insert({
+          sender_id:                pendingSenderId,
+          recipient_type:           'external',
+          recipient_phone_or_email: meta.pending_send_recipient_phone || null,
+          amount:                   amtNgn,
+          reason,
+          status:                   transferStatus,
+          provider:                 'paystack',
+          provider_reference:       providerRef,
+        });
+      }
+
+      console.log(`[Webhook PendingSend] Executed ₦${amtNgn} transfer for sender ${pendingSenderId}`);
+      return res.status(200).json({ success: true, message: 'Transfer executed' });
+    } catch (err) {
+      console.error('[Webhook PendingSend] Error:', err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   const invoiceId = extractInvoiceId(data?.metadata);
 
   if (!invoiceId) {

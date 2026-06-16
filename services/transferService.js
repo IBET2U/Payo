@@ -2,7 +2,7 @@ const axios = require('axios');
 const supabase = require('../supabase');
 const { normalizeNigerianPhone } = require('../whatsapp');
 const { sendPaymentConfirmedWhatsApp } = require('../whatsapp');
-const { initializeWalletTopup } = require('../payments');
+const { initializeWalletTopup, initializeSendPayment } = require('../payments');
 
 function looksLikeEmail(value) {
   const v = String(value || '').trim();
@@ -434,6 +434,44 @@ async function getTransferHistory(senderId, limit = 50) {
   return data || [];
 }
 
+async function createSendPaymentLink(senderId, recipientDetails, amount, reason, options = {}) {
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt <= 0) throw new Error('A valid positive amount is required');
+  if (amt > MAX_TRANSFER_AMOUNT) throw new Error('Amount exceeds the maximum limit of ₦10,000,000.');
+
+  const { data: profile } = await supabase
+    .from('freelancer_profiles')
+    .select('email, name')
+    .eq('id', senderId)
+    .maybeSingle();
+
+  const email = (profile?.email && String(profile.email).includes('@'))
+    ? profile.email
+    : 'payments@payoapp.org';
+
+  const recipientType   = recipientDetails.type;
+  const recipientId     = recipientDetails.type === 'payo' ? (recipientDetails.profile?.id || '') : '';
+  const recipientPhone  = recipientDetails.type === 'payo'
+    ? (recipientDetails.profile?.phone || recipientDetails.profile?.email || '')
+    : (recipientDetails.phoneOrEmail || '');
+  const recipientName   = options.name || recipientDetails.profile?.name || '';
+
+  const { authorizationUrl, reference } = await initializeSendPayment({
+    email,
+    amount: amt,
+    senderId,
+    recipientType,
+    recipientId,
+    recipientPhone,
+    accountNumber: options.accountNumber || '',
+    bankCode:      options.bankCode      || '',
+    recipientName,
+    reason:        reason                || '',
+  });
+
+  return { paymentUrl: authorizationUrl, reference };
+}
+
 async function createWalletTopup(userId, amount) {
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt <= 0) {
@@ -468,4 +506,5 @@ module.exports = {
   createTransferRecipient,
   getTransferHistory,
   createWalletTopup,
+  createSendPaymentLink,
 };

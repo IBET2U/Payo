@@ -6,6 +6,7 @@ const {
   initiateTransfer,
   getTransferHistory,
   createWalletTopup,
+  createSendPaymentLink,
 } = require('../services/transferService');
 const { updateUserEarnings } = require('../services/earningsService');
 
@@ -76,6 +77,37 @@ router.post('/send', async (req, res) => {
     return res.json({ success: true, ...result });
   } catch (err) {
     console.error('[TRANSFER ERROR]', err.message, err.stack);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Collect send amount from sender via Paystack; webhook auto-executes the transfer on confirm
+router.post('/pay-and-send', async (req, res) => {
+  try {
+    const senderId = req.auth?.userId;
+    if (!senderId) return res.status(401).json({ success: false, error: 'Authentication required' });
+
+    const { recipient, amount, reason, accountNumber, bankCode, name } = req.body || {};
+    if (!recipient) return res.status(400).json({ success: false, error: 'recipient is required' });
+
+    const resolved = await resolveRecipient(recipient, { accountNumber, bankCode });
+
+    if (resolved.type === 'external' && (!accountNumber || !bankCode)) {
+      return res.status(200).json({
+        success: false,
+        needs_bank_details: true,
+        message: 'External recipient detected. Please provide bank details to continue.',
+        recipient: resolved,
+      });
+    }
+
+    const { paymentUrl, reference } = await createSendPaymentLink(
+      senderId, resolved, amount, reason, { accountNumber, bankCode, name }
+    );
+
+    return res.json({ success: true, payment_url: paymentUrl, reference, requires_paystack: true });
+  } catch (err) {
+    console.error('[PayAndSend] Error:', err.message);
     return res.status(400).json({ success: false, error: err.message });
   }
 });
