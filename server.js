@@ -236,8 +236,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
-// /app: serve the main app shell (Clerk-protected client-side)
+// /app, /sign-up, /sign-in — all serve the app shell; Clerk handles auth routing client-side
 app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/sign-up', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/sign-in', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
