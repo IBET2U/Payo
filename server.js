@@ -37,6 +37,7 @@ const transferRoutes = require('./routes/transferRoutes');
 const earningsRoutes = require('./routes/earningsRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
+const { askNSC } = require('./nsc');
 require('./followUp');
 
 const app = express();
@@ -247,6 +248,29 @@ app.get('/sign-up', (req, res) => {
 
 app.get('/sign-in', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/nsc-demo', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'nsc-demo.html'));
+});
+
+app.post('/nsc/chat', async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question || !question.trim()) {
+      return res.status(400).json({ success: false, error: 'Question is required' });
+    }
+    const cleanQuestion = String(question).slice(0, 500);
+    const answer = await askNSC(cleanQuestion);
+    res.json({ success: true, answer });
+  } catch (err) {
+    console.error('[NSC] Chat error:', err.message);
+    res.status(500).json({ success: false, error: 'Assistant unavailable. Please try again.' });
+  }
+});
+
+app.get('/nsc-chat.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'nsc-chat.js'));
 });
 
 // Static files only for non-API paths (never intercept /profile, /chat, etc.)
