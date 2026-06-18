@@ -264,7 +264,7 @@ app.post('/nsc/chat', async (req, res) => {
     const answer = await askNSC(cleanQuestion);
     res.json({ success: true, answer });
   } catch (err) {
-    console.error('[NSC] Chat error:', err.message);
+    console.error('[NSC] Chat error:', err.message, err.stack);
     res.status(500).json({ success: false, error: 'Assistant unavailable. Please try again.' });
   }
 });
