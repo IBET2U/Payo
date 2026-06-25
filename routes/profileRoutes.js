@@ -1,10 +1,101 @@
 const express = require('express');
+const multer = require('multer');
 const { clerkClient } = require('@clerk/clerk-sdk-node');
+const supabase = require('../supabase');
 const router = express.Router();
 const {
   getProfile,
   createOrUpdateProfile,
+  updateLogoUrl,
 } = require('../services/profileService');
+const { ensureLogosBucket } = require('../services/storageService');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Images only'));
+  },
+});
+
+function extFromMime(mime) {
+  const map = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'image/svg+xml': '.svg',
+  };
+  return map[mime] || '';
+}
+
+function handleBrandingUpdate(req, res) {
+  return (async () => {
+    try {
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'Unauthenticated' });
+      }
+
+      const raw = req.body || {};
+      const existing = await getProfile(userId);
+      const payload = {};
+
+      if (raw.wallet_address !== undefined || raw.phone !== undefined || raw.name !== undefined || raw.email !== undefined || raw.language !== undefined) {
+        const resolvedEmail = raw.email ?? existing?.email ?? req.auth?.sessionClaims?.email ?? null;
+        const resolvedName = raw.name ?? existing?.name ?? null;
+        const resolvedPhone = raw.phone !== undefined ? raw.phone : existing?.phone ?? null;
+        const resolvedWallet = raw.wallet_address !== undefined ? raw.wallet_address : existing?.wallet_address ?? null;
+        const resolvedLanguage = raw.language ?? existing?.language ?? 'english';
+
+        const safeEmail = String(resolvedEmail || '').trim().toLowerCase().slice(0, 200);
+        if (safeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
+          return res.status(400).json({ success: false, error: 'A valid email is required' });
+        }
+
+        payload.email = safeEmail || null;
+        payload.name = String(resolvedName || '').trim().slice(0, 100) || null;
+        payload.phone = String(resolvedPhone || '').trim().replace(/[^\d+]/g, '').slice(0, 20) || null;
+        payload.wallet_address = String(resolvedWallet || '').trim().slice(0, 120) || null;
+        payload.language = String(resolvedLanguage || 'english').trim().slice(0, 20);
+      }
+
+      const brandingFields = [
+        'business_name',
+        'business_address',
+        'business_phone',
+        'business_website',
+        'invoice_color',
+        'invoice_note',
+        'logo_url',
+      ];
+      for (const field of brandingFields) {
+        if (raw[field] !== undefined) payload[field] = raw[field];
+      }
+
+      if (payload.invoice_color !== undefined) {
+        const color = String(payload.invoice_color || '').trim();
+        if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+          return res.status(400).json({ success: false, error: 'invoice_color must be a hex color like #00a884' });
+        }
+        payload.invoice_color = color || '#00a884';
+      }
+
+      const profile = await createOrUpdateProfile(userId, payload);
+
+      res.json({
+        success: true,
+        profile,
+        has_wallet: !!(profile?.wallet_address && String(profile.wallet_address).trim()),
+        has_bank: !!(profile?.subaccount_code && String(profile.subaccount_code).trim()),
+      });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  })();
+}
 
 // New users often hit bank setup before any profile row exists, and Clerk
 // session claims don't carry an email — resolve it from every source we have.
@@ -178,53 +269,57 @@ router.post('/bank', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/update', (req, res) => handleBrandingUpdate(req, res));
+
+router.post('/logo', (req, res, next) => {
+  upload.single('logo')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const userId = req.auth?.userId;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Unauthenticated' });
     }
 
-    const { wallet_address, phone, name, email, language } = req.body;
-
-    const existing = await getProfile(userId);
-
-    // Resolve (request value → existing → fallback), then sanitize
-    const resolvedEmail = email ?? existing?.email ?? req.auth?.sessionClaims?.email ?? null;
-    const resolvedName = name ?? existing?.name ?? null;
-    const resolvedPhone = phone !== undefined ? phone : existing?.phone ?? null;
-    const resolvedWallet =
-      wallet_address !== undefined ? wallet_address : existing?.wallet_address ?? null;
-    const resolvedLanguage = language ?? existing?.language ?? 'english';
-
-    const safeName = String(resolvedName || '').trim().slice(0, 100);
-    const safeEmail = String(resolvedEmail || '').trim().toLowerCase().slice(0, 200);
-    const safePhone = String(resolvedPhone || '').trim().replace(/[^\d+]/g, '').slice(0, 20);
-    const safeWallet = String(resolvedWallet || '').trim().slice(0, 120);
-    const safeLanguage = String(resolvedLanguage || 'english').trim().slice(0, 20);
-
-    if (safeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
-      return res.status(400).json({ success: false, error: 'A valid email is required' });
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, error: 'No logo file provided' });
     }
 
-    const profile = await createOrUpdateProfile(userId, {
-      email: safeEmail || null,
-      name: safeName || null,
-      wallet_address: safeWallet || null,
-      phone: safePhone || null,
-      language: safeLanguage || 'english',
-    });
+    await ensureLogosBucket();
 
-    res.json({
-      success: true,
-      profile,
-      has_wallet: !!(profile?.wallet_address && String(profile.wallet_address).trim()),
-      has_bank: !!(profile?.subaccount_code && String(profile.subaccount_code).trim()),
-    });
+    const ext = extFromMime(file.mimetype);
+    const path = `${userId}-${Date.now()}${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from('logos')
+      .upload(path, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(data.path);
+    const logoUrl = urlData.publicUrl;
+
+    await updateLogoUrl(userId, logoUrl);
+
+    res.json({ success: true, logo_url: logoUrl });
   } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('[Profile] Logo upload error:', error);
+    const msg = error.message || 'Upload failed';
+    const friendly = /bucket not found/i.test(msg)
+      ? 'Logo storage is not set up. Restart the server and try again.'
+      : msg;
+    res.status(500).json({ success: false, error: friendly });
   }
 });
+
+router.post('/', (req, res) => handleBrandingUpdate(req, res));
 
 module.exports = router;

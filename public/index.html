@@ -986,10 +986,7 @@
     async function postTransferSend(payload) {
       const res = await fetch('/transfers/send', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${await window.Clerk.session.getToken()}`,
-        },
+        headers: await getAuthHeaders(),
         body: JSON.stringify(payload),
       });
       const j = await res.json().catch(() => ({}));
@@ -1499,8 +1496,21 @@
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
 
+    async function waitForClerkToken(maxAttempts = 40) {
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          if (window.Clerk?.session) {
+            const token = await window.Clerk.session.getToken();
+            if (token) return token;
+          }
+        } catch (_) {}
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return null;
+    }
+
     async function getAuthHeaders() {
-      const token = await window.Clerk.session?.getToken();
+      const token = await waitForClerkToken();
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
       return headers;
@@ -1593,6 +1603,16 @@
     async function onClerkSignedIn(user) {
       freelancer = getFreelancerFromClerk();
       avatarEl.textContent = initials(freelancer.name);
+
+      // Wait for JWT before any API call — Clerk.user exists before session token is ready
+      const token = await waitForClerkToken();
+      if (!token) {
+        console.error('[Payo] Clerk token unavailable — check CLERK_PUBLISHABLE_KEY matches CLERK_SECRET_KEY in .env');
+        authLoading.textContent = 'Sign-in failed. Restart the server after updating .env, then refresh.';
+        authLoading.style.display = 'block';
+        return;
+      }
+
       authScreen.classList.add('hidden');
       appEl.classList.remove('hidden');
 
@@ -2124,7 +2144,7 @@
                 try {
                   const pr = await fetch('/transfers/pay-and-send', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await window.Clerk.session.getToken()}` },
+                    headers: await getAuthHeaders(),
                     body: JSON.stringify({ recipient: state.recipient, amount: state.amount, reason: state.reason || '' }),
                   });
                   const pj = await pr.json().catch(() => ({}));
@@ -2171,10 +2191,9 @@
           try {
             btn.disabled = true;
             btn.textContent = 'Opening Paystack…';
-            const token = await window.Clerk.session.getToken();
             const res = await fetch('/transfers/topup', {
               method: 'POST',
-              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              headers: await getAuthHeaders(),
               body: JSON.stringify({ amount: amt }),
             });
             const j = await res.json().catch(() => ({}));
@@ -2239,7 +2258,7 @@
                 bankSendBtn.textContent = 'Opening Paystack…';
                 const pr = await fetch('/transfers/pay-and-send', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await window.Clerk.session.getToken()}` },
+                  headers: await getAuthHeaders(),
                   body: JSON.stringify({ recipient: state.recipient, amount: state.amount, reason: state.reason || '', accountNumber, bankCode, name }),
                 });
                 const pj = await pr.json().catch(() => ({}));
@@ -2558,13 +2577,9 @@
           if (!Number.isFinite(amount) || amount <= 0) return alert(t('error'));
 
           genBtn.disabled = true;
-          const token = await window.Clerk.session.getToken();
           const res = await fetch('/invoices/create', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
+            headers: await getAuthHeaders(),
             body: JSON.stringify({
               freelancer_id: user.id,
               freelancer_email: user.primaryEmailAddress.emailAddress,
@@ -2689,15 +2704,11 @@
           if (!Number.isFinite(amountInput) || amountInput <= 0) return alert(t('error'));
 
           reqBtn.disabled = true;
-          const token = await window.Clerk.session.getToken();
           const dueDateStr = dueDateIn7Days();
 
           const res = await fetch('/invoices/create', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
+            headers: await getAuthHeaders(),
             body: JSON.stringify({
               freelancer_id: user.id,
               freelancer_email: user.primaryEmailAddress?.emailAddress || null,
@@ -3581,11 +3592,72 @@
       })();
     }
 
-    function renderSettings() {
+    async function renderSettings() {
       setActiveTab('settings');
+      let profile = userProfile;
+      try {
+        profile = await fetchProfile();
+      } catch (_) {}
+
+      const logoUrl = profile?.logo_url || '';
+      const brandColor = profile?.invoice_color || '#00a884';
+      const businessName = profile?.business_name || '';
+      const businessAddress = profile?.business_address || '';
+      const businessPhone = profile?.business_phone || '';
+      const businessWebsite = profile?.business_website || '';
+      const invoiceNote = profile?.invoice_note || '';
+
       host.innerHTML = `
         <div class="screen">
           <div class="sectionTitle">${t('Settings') || 'Settings'}</div>
+
+          <div class="sectionTitle" style="margin-top:18px;font-size:15px">Customize Your Invoice 🎨</div>
+          <div class="card" style="padding:14px;margin-bottom:10px">
+            <div class="muted" style="font-size:12px;margin-bottom:10px">Logo (max 2MB, images only)</div>
+            <div id="logoDropZone" style="border:2px dashed #2a3942;border-radius:14px;padding:20px;text-align:center;cursor:pointer;background:#111b21;min-height:100px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+              <div id="logoUploadPrompt" style="${logoUrl ? 'display:none' : ''}">
+                <div style="font-size:24px">📷</div>
+                <div style="font-size:13px;color:#8696a0">Click to upload or drag and drop</div>
+              </div>
+              <img id="logoPreview" alt="Logo preview" style="max-height:80px;max-width:180px;object-fit:contain;${logoUrl ? '' : 'display:none;'}"${logoUrl ? ` src="${escapeAttr(logoUrl)}"` : ''}>
+              <div id="logoUploadSpinner" class="hidden" style="font-size:13px;color:#8696a0">Uploading…</div>
+            </div>
+            <input type="file" id="logoFileInput" accept="image/*" style="display:none">
+            ${logoUrl ? '<button type="button" id="removeLogoBtn" style="margin-top:10px;background:none;border:none;color:#ea4335;font-size:13px;cursor:pointer;padding:0;">Remove logo</button>' : '<button type="button" id="removeLogoBtn" class="hidden" style="margin-top:10px;background:none;border:none;color:#ea4335;font-size:13px;cursor:pointer;padding:0;">Remove logo</button>'}
+
+            <div style="height:16px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Invoice Color</div>
+            <div class="row" style="align-items:center;gap:12px">
+              <input type="color" id="brandColorInput" value="${escapeAttr(brandColor)}" style="width:48px;height:36px;border:none;padding:0;background:transparent;cursor:pointer">
+              <div id="brandColorPreview" style="flex:1;height:36px;border-radius:10px;background:${escapeAttr(brandColor)};border:1px solid #2a3942"></div>
+              <span id="brandColorHex" style="font-size:12px;color:#8696a0;font-family:monospace">${escapeHtml(brandColor)}</span>
+            </div>
+
+            <div style="height:14px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Business name</div>
+            <input class="input" id="brandBusinessName" placeholder="Your business or brand name" value="${escapeAttr(businessName)}">
+
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Business address</div>
+            <input class="input" id="brandBusinessAddress" placeholder="Street, city, country" value="${escapeAttr(businessAddress)}">
+
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Business phone</div>
+            <input class="input" id="brandBusinessPhone" placeholder="+234..." value="${escapeAttr(businessPhone)}">
+
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Website</div>
+            <input class="input" id="brandBusinessWebsite" placeholder="https://yoursite.com" value="${escapeAttr(businessWebsite)}">
+
+            <div style="height:10px"></div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Invoice note (shown at bottom of invoice emails)</div>
+            <textarea class="input" id="brandInvoiceNote" rows="3" placeholder="Thank you for your business!" style="resize:vertical;min-height:72px">${escapeHtml(invoiceNote)}</textarea>
+
+            <div style="height:14px"></div>
+            <button class="btn" type="button" id="saveBrandingBtn">Save invoice branding</button>
+            <div id="brandingSaveStatus" class="muted hidden" style="font-size:12px;margin-top:8px"></div>
+          </div>
+
           <div class="card" style="padding:14px;margin-bottom:10px">
             <div class="row">
               <div class="col" style="gap:2px">
@@ -3620,20 +3692,138 @@
           </div>
         </div>
       `;
+
       document.getElementById('myCheckoutsBtn').onclick = () => navTo('checkouts');
       document.getElementById('bankSetupBtn').onclick = () => navTo('profile-setup/bank');
       document.getElementById('toggleBtn').onclick = () => langToggle.click();
       document.getElementById('logoutBtn').onclick = async () => { if (window.Clerk) await window.Clerk.signOut(); };
 
-      (async () => {
+      const logoDropZone = document.getElementById('logoDropZone');
+      const logoFileInput = document.getElementById('logoFileInput');
+      const logoPreview = document.getElementById('logoPreview');
+      const logoUploadPrompt = document.getElementById('logoUploadPrompt');
+      const logoUploadSpinner = document.getElementById('logoUploadSpinner');
+      const removeLogoBtn = document.getElementById('removeLogoBtn');
+      const brandColorInput = document.getElementById('brandColorInput');
+      const brandColorPreview = document.getElementById('brandColorPreview');
+      const brandColorHex = document.getElementById('brandColorHex');
+
+      brandColorInput.oninput = () => {
+        brandColorPreview.style.background = brandColorInput.value;
+        brandColorHex.textContent = brandColorInput.value;
+      };
+
+      async function uploadLogoFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          alert('Please choose an image file');
+          return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+          alert('Logo must be 2MB or smaller');
+          return;
+        }
+        logoUploadSpinner.classList.remove('hidden');
+        logoUploadPrompt.style.display = 'none';
         try {
-          await fetchProfile();
-          const statusEl = host.querySelector('.card .muted');
-          if (statusEl && profileFlags.has_bank) {
-            statusEl.textContent = 'Linked for Naira payments';
+          const token = await waitForClerkToken();
+          const fd = new FormData();
+          fd.append('logo', file);
+          const res = await fetch('/profile/logo', {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: fd,
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.success) throw new Error(j.error || 'Upload failed');
+          logoPreview.src = j.logo_url;
+          logoPreview.style.display = 'block';
+          removeLogoBtn.classList.remove('hidden');
+          if (userProfile) userProfile.logo_url = j.logo_url;
+        } catch (err) {
+          const msg = err.message || 'Upload failed';
+          if (msg === 'Failed to fetch' || msg.includes('NetworkError')) {
+            alert('Could not reach the server. Make sure npm run dev is running on http://localhost:3000');
+          } else {
+            alert(msg);
           }
-        } catch {}
-      })();
+          if (!logoPreview.src || logoPreview.src === window.location.href) logoUploadPrompt.style.display = 'block';
+        } finally {
+          logoUploadSpinner.classList.add('hidden');
+        }
+      }
+
+      logoDropZone.onclick = () => logoFileInput.click();
+      logoFileInput.onchange = () => {
+        const file = logoFileInput.files?.[0];
+        if (file) uploadLogoFile(file);
+        logoFileInput.value = '';
+      };
+      logoDropZone.addEventListener('dragover', (e) => { e.preventDefault(); logoDropZone.style.borderColor = '#00a884'; });
+      logoDropZone.addEventListener('dragleave', () => { logoDropZone.style.borderColor = '#2a3942'; });
+      logoDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        logoDropZone.style.borderColor = '#2a3942';
+        const file = e.dataTransfer?.files?.[0];
+        if (file) uploadLogoFile(file);
+      });
+
+      removeLogoBtn.onclick = async () => {
+        try {
+          removeLogoBtn.disabled = true;
+          const res = await fetch('/profile/update', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ logo_url: null }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.success) throw new Error(j.error || 'Failed to remove logo');
+          logoPreview.src = '';
+          logoPreview.style.display = 'none';
+          logoUploadPrompt.style.display = 'block';
+          removeLogoBtn.classList.add('hidden');
+          if (userProfile) userProfile.logo_url = null;
+        } catch (err) {
+          alert(err.message || 'Failed to remove logo');
+        } finally {
+          removeLogoBtn.disabled = false;
+        }
+      };
+
+      document.getElementById('saveBrandingBtn').onclick = async () => {
+        const btn = document.getElementById('saveBrandingBtn');
+        const statusEl = document.getElementById('brandingSaveStatus');
+        try {
+          btn.disabled = true;
+          statusEl.classList.add('hidden');
+          const payload = {
+            business_name: document.getElementById('brandBusinessName').value.trim(),
+            business_address: document.getElementById('brandBusinessAddress').value.trim(),
+            business_phone: document.getElementById('brandBusinessPhone').value.trim(),
+            business_website: document.getElementById('brandBusinessWebsite').value.trim(),
+            invoice_color: brandColorInput.value,
+            invoice_note: document.getElementById('brandInvoiceNote').value.trim(),
+          };
+          const res = await fetch('/profile/update', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.success) throw new Error(j.error || 'Save failed');
+          userProfile = j.profile;
+          statusEl.textContent = 'Saved ✓';
+          statusEl.style.color = '#00a884';
+          statusEl.classList.remove('hidden');
+        } catch (err) {
+          statusEl.textContent = err.message || 'Save failed';
+          statusEl.style.color = '#ea4335';
+          statusEl.classList.remove('hidden');
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      wireFormInputs(host);
     }
 
     function escapeHtml(text) {
@@ -3710,17 +3900,46 @@
       });
     }
 
+    function clearClerkBrowserState() {
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('__clerk') || key.startsWith('clerk-')) localStorage.removeItem(key);
+        }
+      } catch (_) {}
+    }
+
     async function init() {
       langToggle.textContent = getLang().toUpperCase();
+      let clerkMode = '';
       try {
-        const configRes = await fetch('/config');
-        const { clerkPublishableKey } = await configRes.json();
+        const configRes = await fetch('/config', { cache: 'no-store' });
+        const config = await configRes.json();
+        const clerkPublishableKey = config.clerkPublishableKey;
+        clerkMode = config.clerkMode || '';
         if (!clerkPublishableKey) {
           authLoading.textContent = 'Clerk is not configured. Add CLERK_PUBLISHABLE_KEY to .env';
           return;
         }
+
+        if (location.hostname === 'localhost' && clerkMode === 'live') {
+          authLoading.innerHTML =
+            'Server is using Clerk <strong>live</strong> keys on localhost.<br><br>' +
+            'Run <code>npm run dev</code> in the project folder. Terminal must show <code>Clerk: test</code>.';
+          return;
+        }
+
+        const prevPk = localStorage.getItem('payoClerkPk');
+        const clerkKeyChanged = prevPk && prevPk !== clerkPublishableKey;
+        if (clerkKeyChanged) clearClerkBrowserState();
+        localStorage.setItem('payoClerkPk', clerkPublishableKey);
+
         await loadClerkScript(clerkPublishableKey);
         await window.Clerk.load();
+
+        if (clerkKeyChanged && window.Clerk.session) {
+          try { await window.Clerk.signOut(); } catch (_) {}
+        }
+
         authLoading.style.display = 'none';
 
         window.Clerk.addListener(async ({ user }) => {
@@ -3745,7 +3964,19 @@
           mountClerkAuth();
         }
       } catch (err) {
-        authLoading.textContent = `Failed to initialize: ${err.message}`;
+        const msg = err.message || String(err);
+        if (msg.includes('Production Keys are only allowed')) {
+          authLoading.innerHTML =
+            'Clerk live keys only work on <strong>payoapp.org</strong>, not localhost.<br><br>' +
+            'Restart with <code>npm run dev</code> and use Development keys in .env (<code>CLERK_*_DEV</code>).<br><br>' +
+            'Server should log: <code>Clerk: test</code> — if it says <code>live</code>, kill the old server first.';
+        } else if (clerkMode === 'live' && location.hostname === 'localhost') {
+          authLoading.innerHTML =
+            'Server is using Clerk <strong>live</strong> keys on localhost.<br><br>' +
+            'Stop the old server and run <code>npm run dev</code>. Check terminal shows <code>Clerk: test</code>.';
+        } else {
+          authLoading.textContent = `Failed to initialize: ${msg}`;
+        }
       }
     }
 

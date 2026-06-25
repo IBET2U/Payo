@@ -3,18 +3,77 @@ Sentry.init({
   dsn: 'https://20572c681aea863a65f724d04d764512@o4511527778779136.ingest.us.sentry.io/4511527788085248',
   tracesSampleRate: 1.0
 });
-require('dotenv').config();
+// override: true — shell/Cursor env must not stale-override .env Clerk keys
+require('dotenv').config({ override: true });
+
+const onRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+const isProductionDeploy = onRailway || process.env.NODE_ENV === 'production';
+
+function resolveClerkKeys() {
+  if (isProductionDeploy) {
+    const pk = process.env.CLERK_PUBLISHABLE_KEY_LIVE || process.env.CLERK_PUBLISHABLE_KEY || '';
+    const sk = process.env.CLERK_SECRET_KEY_LIVE || process.env.CLERK_SECRET_KEY || '';
+    process.env.CLERK_PUBLISHABLE_KEY = pk;
+    process.env.CLERK_SECRET_KEY = sk;
+    return pk.startsWith('pk_live') ? 'live' : 'test';
+  }
+
+  const devPk = process.env.CLERK_PUBLISHABLE_KEY_DEV || process.env.CLERK_PUBLISHABLE_KEY || '';
+  const devSk = process.env.CLERK_SECRET_KEY_DEV || process.env.CLERK_SECRET_KEY || '';
+
+  if (devPk.startsWith('pk_live') || devSk.startsWith('sk_live')) {
+    console.error(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Clerk LIVE keys cannot be used on localhost (payoapp.org only).
+
+For local dev, add Development keys to .env:
+  Clerk Dashboard → Payo → API Keys → Development
+
+  CLERK_PUBLISHABLE_KEY_DEV=pk_test_...
+  CLERK_SECRET_KEY_DEV=sk_test_...
+
+Keep pk_live / sk_live on Railway only (or as CLERK_*_LIVE in .env).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`);
+    process.exit(1);
+  }
+
+  process.env.CLERK_PUBLISHABLE_KEY = devPk;
+  process.env.CLERK_SECRET_KEY = devSk;
+  return 'test';
+}
+
+const clerkMode = resolveClerkKeys();
+
+if (!process.env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY.includes('REPLACE_WITH')) {
+  console.error(
+    'Missing CLERK_SECRET_KEY_DEV — copy sk_test_… from Clerk Dashboard → API Keys → Development'
+  );
+  process.exit(1);
+}
 
 // Fail fast if critical secrets are missing — a half-configured server is dangerous
 const REQUIRED_ENV_VARS = [
   'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_KEY',
   'ANTHROPIC_API_KEY',
   'PAYSTACK_SECRET_KEY',
   'CLERK_SECRET_KEY',
   'RESEND_API_KEY',
 ];
-const missingVars = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+const missingVars = REQUIRED_ENV_VARS.filter((v) => {
+  if (v === 'SUPABASE_SERVICE_KEY') {
+    return !(process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+  }
+  if (v === 'CLERK_SECRET_KEY') {
+    return !(
+      process.env.CLERK_SECRET_KEY ||
+      process.env.CLERK_SECRET_KEY_DEV ||
+      process.env.CLERK_SECRET_KEY_LIVE
+    );
+  }
+  return !process.env[v];
+});
 if (missingVars.length > 0) {
   console.error('Missing required environment variables:', missingVars);
   process.exit(1);
@@ -38,6 +97,7 @@ const earningsRoutes = require('./routes/earningsRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
 const { askNSC } = require('./nsc');
+const { ensureLogosBucket } = require('./services/storageService');
 require('./followUp');
 
 const app = express();
@@ -187,7 +247,10 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/config', (req, res) => {
-  res.json({ clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || '' });
+  res.json({
+    clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || '',
+    clerkMode,
+  });
 });
 
 app.get('/banks', transfersLimiter, async (req, res) => {
@@ -304,5 +367,9 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Payo server running on port ${PORT}`);
+  const pk = process.env.CLERK_PUBLISHABLE_KEY || '';
+  console.log(`Payo server running on port ${PORT} (Clerk: ${clerkMode}, pk=${pk.slice(0, 12)}…)`);
+  ensureLogosBucket().catch((err) => {
+    console.warn('[Storage] logos bucket check failed:', err.message);
+  });
 });

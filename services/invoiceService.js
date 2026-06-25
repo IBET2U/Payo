@@ -172,15 +172,21 @@ async function createAndSendInvoice({
   if (cleanClientEmail && !isQuickPayment) {
     try {
       await sendInvoiceEmail(
-        cleanClientEmail,
-        client_name,
-        freelancer_name || 'Your Freelancer',
-        invoice_content,
-        amount,
-        due_date,
-        invoice.id,
-        paymentUrl,
-        normalizedCurrency
+        {
+          id: invoice.id,
+          client_email: cleanClientEmail,
+          client_name,
+          client_phone: normalizedClientPhone,
+          project_description,
+          amount,
+          due_date,
+          payment_url: paymentUrl,
+          currency: normalizedCurrency,
+          created_at: invoice.created_at,
+          freelancer_email,
+          freelancer_name: freelancer_name || profile?.name || 'Your Freelancer',
+        },
+        profile
       );
     } catch (err) {
       console.error(
