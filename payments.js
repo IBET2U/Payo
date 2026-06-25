@@ -27,6 +27,8 @@ async function initializePayment({
   subaccount,
   bearer,
   transaction_charge,
+  callback_url,
+  metadata: extraMetadata,
 }) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
@@ -44,11 +46,16 @@ async function initializePayment({
     metadata: {
       invoice_id: String(invoiceId),
       client_name: clientName,
+      ...(extraMetadata || {}),
     },
   };
 
-  if (process.env.PAYSTACK_CALLBACK_URL) {
+  if (callback_url) {
+    payload.callback_url = callback_url;
+  } else if (process.env.PAYSTACK_CALLBACK_URL) {
     payload.callback_url = process.env.PAYSTACK_CALLBACK_URL;
+  } else if (process.env.PAYO_BASE_URL) {
+    payload.callback_url = `${process.env.PAYO_BASE_URL.replace(/\/$/, '')}/webhooks/paystack`;
   }
 
   if (subaccount) {

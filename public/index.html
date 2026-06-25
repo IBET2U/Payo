@@ -1728,7 +1728,25 @@
       };
     }
 
+    function invoiceCreateErrorMessage(j) {
+      const msg = j?.message || j?.error || '';
+      if (j?.error === 'payment_link_failed') {
+        return msg || 'Could not create payment link. Check your bank or wallet in Settings.';
+      }
+      if (j?.error === 'bank_account_required') {
+        return j.message || 'Add your bank account in Settings first.';
+      }
+      if (j?.error === 'wallet_required') {
+        return j.message || 'Add your USDC wallet in Settings first.';
+      }
+      return msg || 'Failed to generate payment link';
+    }
+
     function handleInvoiceSetupError(j, opts) {
+      if (j?.error === 'payment_link_failed') {
+        alert(invoiceCreateErrorMessage(j));
+        return true;
+      }
       if (j && (j.error === 'bank_account_required' || j.error === 'wallet_required')) {
         renderPaymentSetupRequired(j.error, opts);
         return true;
@@ -2439,7 +2457,7 @@
                 },
               });
               if (handled) return;
-              throw new Error(j.message || j.error || 'Failed to send bill');
+              throw new Error(invoiceCreateErrorMessage(j));
             }
             sessionStorage.setItem(
               'billReceipt',
@@ -2568,8 +2586,8 @@
       document.getElementById('quickGenBtn').onclick = async () => {
         const genBtn = document.getElementById('quickGenBtn');
         try {
-          const user = window.Clerk?.user;
-          if (!user?.id) return alert(t('error'));
+          const fl = getFreelancerFromClerk();
+          if (!fl?.id || !fl?.email) return alert(t('error'));
 
           const amount = parseAmount(document.getElementById('quickAmt').value);
           const description = document.getElementById('quickDesc').value.trim();
@@ -2581,9 +2599,9 @@
             method: 'POST',
             headers: await getAuthHeaders(),
             body: JSON.stringify({
-              freelancer_id: user.id,
-              freelancer_email: user.primaryEmailAddress.emailAddress,
-              freelancer_name: user.fullName || 'Payo User',
+              freelancer_id: fl.id,
+              freelancer_email: fl.email,
+              freelancer_name: fl.name,
               client_name: 'Quick Payment',
               client_email: 'payments@payoapp.org',
               client_phone: null,
@@ -2607,7 +2625,7 @@
               },
             });
             if (handled) return;
-            throw new Error(j.message || j.error || 'Failed to generate link');
+            throw new Error(invoiceCreateErrorMessage(j));
           }
           const paymentUrl = j.payment_url || j.invoice?.payment_url;
           if (!paymentUrl) {

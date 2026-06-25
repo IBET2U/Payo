@@ -124,7 +124,7 @@ async function resolveUserEmail(req, existingProfile, bodyEmail) {
   return null;
 }
 const {
-  createSubaccount,
+  saveBankDetails,
   getBanks,
   verifyBankAccount,
 } = require('../services/subaccountService');
@@ -154,13 +154,6 @@ router.get('/verify-bank', async (req, res) => {
   try {
     const { account_number, bank_code } = req.query;
     const result = await verifyBankAccount(account_number, bank_code);
-
-    if (!result?.account_name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Could not verify account. Check account number and bank.',
-      });
-    }
 
     res.json({
       success: true,
@@ -192,13 +185,6 @@ router.post('/bank/verify', async (req, res) => {
 
     const { account_number, bank_code } = req.body || {};
     const result = await verifyBankAccount(account_number, bank_code);
-
-    if (!result?.account_name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Could not verify account. Check account number and bank.',
-      });
-    }
 
     res.json({
       success: true,
@@ -240,15 +226,7 @@ router.post('/bank', async (req, res) => {
       });
     }
 
-    const verified = await verifyBankAccount(account_number, bank_code);
-    if (!verified?.account_name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Could not verify bank account. Please verify before saving.',
-      });
-    }
-
-    const result = await createSubaccount(userId, {
+    const result = await saveBankDetails(userId, {
       accountNumber: account_number,
       bankCode: bank_code,
       businessName: business_name,

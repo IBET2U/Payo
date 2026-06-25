@@ -154,7 +154,23 @@ async function createAndSendInvoice({
     reference = paymentResult.reference;
   } catch (paymentErr) {
     console.error('[invoiceService] Payment link failed:', paymentErr.message);
-    // Continue without payment link — email still sends
+    await supabase.from('invoices').delete().eq('id', data.id);
+    return {
+      success: false,
+      error: 'payment_link_failed',
+      message:
+        paymentErr.message ||
+        'Could not create payment link. Check your bank or wallet setup and try again.',
+    };
+  }
+
+  if (!paymentUrl) {
+    await supabase.from('invoices').delete().eq('id', data.id);
+    return {
+      success: false,
+      error: 'payment_link_failed',
+      message: 'Could not create payment link. Please try again.',
+    };
   }
 
   const { data: invoice, error: updateError } = await supabase

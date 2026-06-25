@@ -35,7 +35,7 @@ router.post('/create', async (req, res) => {
       currency: (currency || 'NGN').toUpperCase() === 'USD' ? 'USD' : 'NGN',
     });
 
-    // Setup-required errors (bank_account_required / wallet_required)
+    // Setup-required errors (bank_account_required / wallet_required / payment_link_failed)
     if (result.success === false) {
       return res.status(400).json(result);
     }
